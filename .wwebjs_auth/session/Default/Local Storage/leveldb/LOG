@@ -1,0 +1,18 @@
+2024/06/02-03:11:41.417 1bba Reusing MANIFEST /home/lairton/andromeda/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2024/06/02-03:11:41.422 1bba Recovering log #14
+2024/06/02-03:11:41.423 1bba Reusing old log /home/lairton/andromeda/.wwebjs_auth/session/Default/Local Storage/leveldb/000014.log 
+2024/06/02-05:21:53.066 1bbc Level-0 table #18: started
+2024/06/02-05:21:53.069 1bbc Level-0 table #18: 16516 bytes OK
+2024/06/02-05:21:53.071 1bbc Delete type=0 #14
+2024/06/02-05:21:53.071 1bbc Compacting 4@0 + 1@1 files
+2024/06/02-05:21:53.073 1bbc Generated table #19@0: 109 keys, 7569 bytes
+2024/06/02-05:21:53.073 1bbc Compacted 4@0 + 1@1 files => 7569 bytes
+2024/06/02-05:21:53.075 1bbc compacted to: files[ 0 1 1 0 0 0 0 ]
+2024/06/02-05:21:53.075 1bbc Delete type=2 #15
+2024/06/02-05:21:53.075 1bbc Delete type=2 #13
+2024/06/02-05:21:53.075 1bbc Delete type=2 #10
+2024/06/02-05:21:53.075 1bbc Delete type=2 #18
+2024/06/02-05:21:53.075 1bbc Delete type=2 #7
+2024/06/02-17:02:20.682 1bbc Level-0 table #21: started
+2024/06/02-17:02:20.686 1bbc Level-0 table #21: 13011 bytes OK
+2024/06/02-17:02:20.688 1bbc Delete type=0 #17
