@@ -25,11 +25,15 @@ client.on("qr", (qr) => {
 });
 
 client.on("message", async (message) => {
+  const contact = await message.getContact();
+  const senderName = contact.pushname;
 
   if (message.body.startsWith("coiso"))
     {
       const prompt = message.body.replace("coiso","").trim();
+      console.log(`${senderName} enviou o seguinte prompt para o Google AI: ${prompt}`)
       const response = await getGeminiResponse(prompt);
+      console.log(`Resposta do Google AI para ${senderName}: ${response}`)
       message.reply(response);
     }
 
@@ -39,10 +43,6 @@ client.on("message", async (message) => {
       .toLowerCase()
       .slice(1)
       .split(" ");
-
-    const query = queryWords.join(" ");
-    const contact = await message.getContact();
-    const senderName = contact.pushname;
 
     switch (command) {
       case "fig":
