@@ -39,7 +39,7 @@ client.on("message", async (message) => {
 
 
   if (message.body.startsWith("!")) {
-    const [command, ...queryWords] = message.body
+    const [command] = message.body
       .toLowerCase()
       .slice(1)
       .split(" ");
