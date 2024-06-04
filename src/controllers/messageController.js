@@ -5,20 +5,25 @@ export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
 
-  if (message.body.startsWith("coiso")) {
-    try {
-      const prompt = message.body.replace("coiso", "").trim();
-      console.log(`${senderName} enviou o seguinte prompt para o Google AI: ${prompt}`);
-      const response = await getGeminiResponse(prompt);
-      console.log(`Resposta do Google AI para ${senderName}: ${response}`);
-      message.reply(response);
-    } catch (error) {
-      console.error(error);
-      message.reply("Failed to generate response, try again.");
-      
-    }
-   
+  if (message){
+    const text = await message.getQuotedMessage();
+    console.log(text);
   }
+
+  // if (message.body.startsWith("coiso")) {
+  //   try {
+  //     const prompt = message.body.replace("coiso", "").trim();
+  //     console.log(`${senderName} enviou o seguinte prompt para o Google AI: ${prompt}`);
+  //     const response = await getGeminiResponse(prompt);
+  //     console.log(`Resposta do Google AI para ${senderName}: ${response}`);
+  //     message.reply(response);
+  //   } catch (error) {
+  //     console.error(error);
+  //     message.reply("Failed to generate response, try again.");
+      
+  //   }
+   
+  // }
 
   if (message.body.startsWith("!")) {
     const [command] = message.body.toLowerCase().slice(1).split(" ");

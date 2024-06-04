@@ -7,7 +7,7 @@ export function initWhatsappClient() {
   const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-      headless: false,
+      headless: true,
     },
   });
 
