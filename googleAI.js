@@ -15,6 +15,9 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 2000;
+
 export async function getGeminiResponse(prompt) {
   const chatSession = model.startChat({
     generationConfig,
