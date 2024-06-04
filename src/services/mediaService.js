@@ -1,5 +1,6 @@
+import pkg from 'whatsapp-web.js';
 import { NSFW } from "nsfwhub";
-import { MessageMedia } from "whatsapp-web.js";
+const { MessageMedia } = pkg;
 
 const nsfw = new NSFW();
 
