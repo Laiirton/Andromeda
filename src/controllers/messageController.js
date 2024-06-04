@@ -4,12 +4,10 @@ import {
   sendNSFWImage,
 } from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
-import MarkdownIt from "markdown-it";
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
-  const md = new MarkdownIt();
 
   if (message.body.startsWith("coiso")) {
     try {
@@ -52,9 +50,8 @@ export async function processMessage(client, message) {
         }
       }
 
-      const renderedResponse = md.render(response);
-      console.log(`Response generated for ${senderName}: ${renderedResponse}`);
-      message.reply(renderedResponse);
+      console.log(`Response generated for ${senderName}: ${response}`);
+      message.reply(response);
     } catch (error) {
       console.error(error);
       message.reply("An unexpected error occurred, please try again later.");
