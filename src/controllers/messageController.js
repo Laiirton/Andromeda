@@ -17,9 +17,7 @@ export async function processMessage(client, message) {
       if (quotedMessage) {
         // Se houver uma mensagem marcada, use o texto da mensagem marcada
         prompt =
-          quotedMessage.body.trim() +
-          " " +
-          message.body.replace("coiso", "").trim();
+          quotedMessage.body.trim() + " " + message.body.replace("coiso", "").trim();
       } else {
         // Se não houver mensagem marcada, use apenas o texto após "coiso"
         prompt = message.body.replace("coiso", "").trim();
