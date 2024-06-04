@@ -1,31 +1,62 @@
-import { sendSticker, sendImage, sendNSFWImage } from "../services/mediaService.js";
+import {
+  sendSticker,
+  sendImage,
+  sendNSFWImage,
+} from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
 
-
   if (message.body.startsWith("coiso")) {
     try {
       let prompt;
       const quotedMessage = await message.getQuotedMessage();
-      
+
       if (quotedMessage) {
         // Se houver uma mensagem marcada, use o texto da mensagem marcada
-        prompt = quotedMessage.body.trim() + " " + message.body.replace("coiso", "").trim();
+        prompt =
+          quotedMessage.body.trim() +
+          " " +
+          message.body.replace("coiso", "").trim();
       } else {
         // Se não houver mensagem marcada, use apenas o texto após "coiso"
         prompt = message.body.replace("coiso", "").trim();
       }
-  
-      console.log(`${senderName} enviou o seguinte prompt para o Google AI: ${prompt}`);
-      const response = await getGeminiResponse(prompt);
-      console.log(`Resposta do Google AI para ${senderName}: ${response}`);
+
+      const MAX_RETRIES = 3;
+      const RETRY_DELAY = 10000;
+      let retries = 0;
+      let response;
+
+      while (retries < MAX_RETRIES) {
+        try {
+          console.log(`Attempt #${retries + 1} for prompt: ${prompt}`);
+          response = await getGeminiResponse(prompt);
+          console.log(`Request successful on attempt #${retries + 1}!`);
+          break;
+        } catch (error) {
+          retries++;
+          console.log(`Error on attempt #${retries}: ${error.message}`);
+          if (retries === MAX_RETRIES) {
+            message.reply("Failed to generate response, try again.");
+            return;
+          }
+          console.error(
+            `Error: ${error.message}, retrying in ${
+              RETRY_DELAY / 1000
+            } seconds...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+        }
+      }
+
+      console.log(`Response generated for ${senderName}: ${response}`);
       message.reply(response);
     } catch (error) {
       console.error(error);
-      message.reply("Failed to generate response, try again.");
+      message.reply("An unexpected error occurred, please try again later.");
     }
   }
 
@@ -63,7 +94,9 @@ export async function processMessage(client, message) {
         break;
 
       default:
-        message.reply("Invalid command, try !menu to see the available commands.");
+        message.reply(
+          "Invalid command, try !menu to see the available commands."
+        );
     }
   }
 }
