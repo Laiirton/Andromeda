@@ -1,11 +1,11 @@
 {
   "name": "andromeda",
   "version": "1.0.0",
-  "description": "whatsapp bot  ",
-  "main": "index.js",
+  "description": "whatsapp bot",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start": "node"
+    "start": "node src/index.js"
   },
   "author": "anjinho ruindade pura",
   "license": "ISC",
