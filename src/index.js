@@ -1,8 +1,6 @@
-import pkg from "whatsapp-web.js";
 import { initWhatsappClient } from "./utils/whatsappClient.js";
 import { processMessage } from "./controllers/messageController.js";
 
-const { Client } = pkg;
 
 const client = initWhatsappClient();
 
