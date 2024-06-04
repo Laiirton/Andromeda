@@ -5,10 +5,6 @@ export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
 
-  if (message){
-    const text = await message.getQuotedMessage();
-    console.log(text);
-  }
 
   if (message.body.startsWith("coiso")) {
     try {

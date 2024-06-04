@@ -15,8 +15,8 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
-const MAX_RETRIES = 5; // número máximo de tentativas
-const RETRY_DELAY = 2000; // atraso em milissegundos entre as tentativas
+const MAX_RETRIES = 3; // número máximo de tentativas
+const RETRY_DELAY = 10000; // atraso em milissegundos entre as tentativas
 
 export async function getGeminiResponse(prompt) {
   let retries = 0;
@@ -24,6 +24,7 @@ export async function getGeminiResponse(prompt) {
 
   while (retries < MAX_RETRIES) {
     try {
+      console.log(`Tentativa #${retries + 1} para o prompt: ${prompt}`);
       const chatSession = model.startChat({
         generationConfig,
         safetySettings: [
@@ -48,9 +49,11 @@ export async function getGeminiResponse(prompt) {
       });
 
       result = await chatSession.sendMessage(prompt);
+      console.log(`Solicitação bem-sucedida na tentativa #${retries + 1}!`)
       break; // se a solicitação for bem-sucedida, saia do loop
     } catch (error) {
       retries++;
+      console.log(`Erro na tentativa #${retries}: ${error.message}`)
       if (retries === MAX_RETRIES) {
         throw error; // se atingir o número máximo de tentativas, lance o erro
       }
