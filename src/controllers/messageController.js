@@ -10,20 +10,28 @@ export async function processMessage(client, message) {
     console.log(text);
   }
 
-  // if (message.body.startsWith("coiso")) {
-  //   try {
-  //     const prompt = message.body.replace("coiso", "").trim();
-  //     console.log(`${senderName} enviou o seguinte prompt para o Google AI: ${prompt}`);
-  //     const response = await getGeminiResponse(prompt);
-  //     console.log(`Resposta do Google AI para ${senderName}: ${response}`);
-  //     message.reply(response);
-  //   } catch (error) {
-  //     console.error(error);
-  //     message.reply("Failed to generate response, try again.");
+  if (message.body.startsWith("coiso")) {
+    try {
+      let prompt;
+      const quotedMessage = await message.getQuotedMessage();
       
-  //   }
-   
-  // }
+      if (quotedMessage) {
+        // Se houver uma mensagem marcada, use o texto da mensagem marcada
+        prompt = quotedMessage.body.trim() + " " + message.body.replace("coiso", "").trim();
+      } else {
+        // Se não houver mensagem marcada, use apenas o texto após "coiso"
+        prompt = message.body.replace("coiso", "").trim();
+      }
+  
+      console.log(`${senderName} enviou o seguinte prompt para o Google AI: ${prompt}`);
+      const response = await getGeminiResponse(prompt);
+      console.log(`Resposta do Google AI para ${senderName}: ${response}`);
+      message.reply(response);
+    } catch (error) {
+      console.error(error);
+      message.reply("Failed to generate response, try again.");
+    }
+  }
 
   if (message.body.startsWith("!")) {
     const [command] = message.body.toLowerCase().slice(1).split(" ");
