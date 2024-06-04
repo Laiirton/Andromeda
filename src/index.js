@@ -32,10 +32,6 @@ client.on("qr", (qr) => {
   console.log(`QR received, scan to connect: ${qr}`);
 });
 
-client.on("message_ack", (message, ack) => {
-  console.log(`Message ${message.id} was ${ack}`);
-});
-
 client.on("error", (error) => {
   console.error(`Client error: ${error}`);
 });
