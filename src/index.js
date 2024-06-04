@@ -1,7 +1,7 @@
 import pkg from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 import { NSFW } from "nsfwhub";
-import { getGeminiResponse } from "./googleAI.js";
+import { getGeminiResponse } from "../googleAI.js";
 
 
 const { Client, LocalAuth, MessageMedia } = pkg;
