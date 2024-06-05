@@ -4,11 +4,13 @@ import {
   sendNSFWImage,
 } from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
+import  menu  from "../utils/lang.js";
+
 
 function getFormattedDateTime() {
   const now = new Date();
-  const date = now.toLocaleDateString('pt-BR');
-  const time = now.toLocaleTimeString('pt-BR', { hour12: false });
+  const date = now.toLocaleDateString("pt-BR");
+  const time = now.toLocaleTimeString("pt-BR", { hour12: false });
   return `${date} ${time}`;
 }
 
@@ -16,31 +18,41 @@ export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
 
-
-  // Generative AI Sistem 
+  // Generative AI Sistem
   if (message.body.startsWith("coiso")) {
     try {
       let prompt;
       const quotedMessage = await message.getQuotedMessage();
-  
+
       if (quotedMessage) {
-        prompt = quotedMessage.body.trim() + " " + message.body.replace("coiso", "").trim();
+        prompt =
+          quotedMessage.body.trim() +
+          " " +
+          message.body.replace("coiso", "").trim();
       } else {
         prompt = message.body.replace("coiso", "").trim();
       }
-  
+
       if (!prompt) {
         throw new Error("O prompt não pode estar vazio.");
       }
-  
-      console.log(`[${getFormattedDateTime()}] Gerando resposta para o prompt: ${prompt}`);
+
+      console.log(
+        `[${getFormattedDateTime()}] Gerando resposta para o prompt: ${prompt}`
+      );
       const response = await getGeminiResponse(prompt);
-  
-      console.log(`[${getFormattedDateTime()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`);
+
+      console.log(
+        `[${getFormattedDateTime()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
+      );
       message.reply(response);
     } catch (error) {
-      console.error(`[${getFormattedDateTime()}] Erro ao gerar resposta: ${error.message}`);
-      message.reply("Ocorreu um erro inesperado, por favor tente novamente mais tarde.");
+      console.error(
+        `[${getFormattedDateTime()}] Erro ao gerar resposta: ${error.message}`
+      );
+      message.reply(
+        "Ocorreu um erro inesperado, por favor tente novamente mais tarde."
+      );
     }
   }
 
@@ -69,12 +81,7 @@ export async function processMessage(client, message) {
         break;
 
       case "menu":
-        message.reply(`
-          *Comandos disponíveis:*
-          
-          *!fig* - Cria uma figurinha a partir de uma imagem. Responda a uma imagem com este comando.
-          *!img* - Envia a imagem original de uma figurinha. Responda a uma figurinha com este comando.
-        `);
+        message.reply(menu);
         break;
 
       default:
