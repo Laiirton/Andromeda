@@ -34,6 +34,8 @@ export async function processMessage(client, message) {
       }
 
       if (!prompt) {
+        message.reply("Oi, você precisa me dizer o que deseja.");
+
         throw new Error("O prompt não pode estar vazio.");
       }
 
@@ -49,9 +51,6 @@ export async function processMessage(client, message) {
     } catch (error) {
       console.error(
         `[${getFormattedDateTime()}] Erro ao gerar resposta: ${error.message}`
-      );
-      message.reply(
-        "Ocorreu um erro inesperado, por favor tente novamente mais tarde."
       );
     }
   }
