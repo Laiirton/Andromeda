@@ -5,6 +5,7 @@ import {
 } from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
 import  menu  from "../utils/lang.js";
+import { deleteMessage } from "../utils/chatTools.js";
 
 
 export async function processMessage(client, message) {
@@ -58,6 +59,10 @@ export async function processMessage(client, message) {
 
       case "img":
         await sendImage(client, message);
+        break;
+
+      case "delete":
+        await deleteMessage(client, message, senderName);
         break;
 
       case "pussy":
