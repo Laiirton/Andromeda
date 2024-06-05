@@ -5,12 +5,15 @@ import {
 } from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
 import  menu  from "../utils/lang.js";
-import { deleteMessage } from "../utils/chatTools.js";
+import { deleteMessage, messageLog } from "../utils/chatTools.js";
 
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
+
+  // Log the all messages sended 
+  messageLog(message, senderName);
 
   // Generative AI Sistem
   if (message.body.startsWith("coiso")) {
@@ -62,7 +65,7 @@ export async function processMessage(client, message) {
         break;
 
       case "delete":
-        await deleteMessage(client, message, senderName);
+        await deleteMessage(message, senderName);
         break;
 
       case "pussy":
