@@ -42,9 +42,9 @@ export async function sendNSFWImage(client, message, senderName, category) {
     const image_url = nsfw_image.image.url;
     const media = await MessageMedia.fromUrl(image_url);
     await client.sendMessage(message.from, media);
-    console.log(`${category} image sent to ${senderName}`);
+    console.log(`${category} image sent to ${senderName} at ${new Date().toLocaleString()}`);
   } catch (error) {
     console.error(error);
-    message.reply("Failed to fetch image.");
+    message.reply("An error occurred while trying to download the image, please try again.");
   }
 }

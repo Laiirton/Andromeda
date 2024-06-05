@@ -7,13 +7,6 @@ import { getGeminiResponse } from "../services/googleAIService.js";
 import  menu  from "../utils/lang.js";
 
 
-function getFormattedDateTime() {
-  const now = new Date();
-  const date = now.toLocaleDateString("pt-BR");
-  const time = now.toLocaleTimeString("pt-BR", { hour12: false });
-  return `${date} ${time}`;
-}
-
 export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
@@ -40,17 +33,17 @@ export async function processMessage(client, message) {
       }
 
       console.log(
-        `[${getFormattedDateTime()}] Gerando resposta para o prompt: ${prompt}`
+        `[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`
       );
       const response = await getGeminiResponse(prompt);
 
       console.log(
-        `[${getFormattedDateTime()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
+        `[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
       );
       message.reply(response);
     } catch (error) {
       console.error(
-        `[${getFormattedDateTime()}] Erro ao gerar resposta: ${error.message}`
+        `[${new Date().toLocaleString()}] Erro ao gerar resposta: ${error.message}`
       );
     }
   }
@@ -78,6 +71,24 @@ export async function processMessage(client, message) {
       case "dick":
         await sendNSFWImage(client, message, senderName, "dick");
         break;
+      
+      case "futa":
+        await sendNSFWImage(client, message, senderName, "futa");
+        break;
+
+      case "hentai":
+        await sendNSFWImage(client, message, senderName, "hentai");
+        break
+
+      case "boobs":
+          await sendNSFWImage(client, message, senderName, "boobs");
+          break
+
+      case "gay":
+          await sendNSFWImage(client, message, senderName, "gay");
+          break
+        
+      
 
       case "menu":
         message.reply(menu);
