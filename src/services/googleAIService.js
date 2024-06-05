@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import dotenv from 'dotenv';
+dotenv.config();
 
-const apiKey = "AIzaSyCem06DOhmjJxz9qireL64r4Nt8L3lyVk0";
+const apiKey = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
 const model = genAI.getGenerativeModel({
