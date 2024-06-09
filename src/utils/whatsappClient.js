@@ -8,6 +8,8 @@ export function initWhatsappClient() {
     authStrategy: new LocalAuth(),
     puppeteer: {
       headless: true,
+      executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+
     },
   });
 

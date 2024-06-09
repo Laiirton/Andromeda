@@ -15,6 +15,7 @@ client.on("message", async (message) => {
   }
 });
 
+
 client.on("auth_failure", () => {
   console.error("Authentication failure. Check your credentials.");
 });

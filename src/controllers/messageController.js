@@ -12,6 +12,8 @@ export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
 
+
+
   // Log the all messages sended 
   messageLog(message, senderName);
 
@@ -90,13 +92,11 @@ export async function processMessage(client, message) {
 
       case "boobs":
           await sendNSFWImage(client, message, senderName, "boobs");
-          break
+        break
 
       case "gay":
           await sendNSFWImage(client, message, senderName, "gay");
-          break
-        
-      
+        break
 
       case "menu":
         message.reply(menu);
