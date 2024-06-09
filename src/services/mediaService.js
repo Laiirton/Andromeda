@@ -55,11 +55,10 @@ export async function sendSticker(client, message, senderName) {
   ffmpegProcess.on('close', async (code) => {
     console.log(`FFmpeg process exited with code ${code}`);
     if (code === 0) {
-      await client.sendMessage(message.from, MessageMedia.fromFilePath('./src/media/temp.webp'),{
-        sendMediaAsSticker: true,
-        stickerAuthor: "Anjinho Bot ",
-        stickerName: `Create by ${senderName}`,
-      });
+      await client.sendMessage(message.from, MessageMedia.fromFilePath('./src/media/temp.webp'));
+      // Delete the files after they have been sent
+      fs.unlinkSync('./src/media/temp.mp4');
+      fs.unlinkSync('./src/media/temp.webp');
     }
   });
 
