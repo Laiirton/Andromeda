@@ -24,67 +24,67 @@ export async function sendSticker(client, message, senderName) {
     }
     console.log(`Sticker sent to ${senderName}`);
 
-    if (mediaMessage.type === "video") {
-      console.log("Video sticker");
+    // if (mediaMessage.type === "video") {
+    //   console.log("Video sticker");
 
-      const getMediaData = await mediaMessage.downloadMedia();
-      const stickerBuffer = getMediaData.data.toString("base64");
-      const videoBuffer = Buffer.from(stickerBuffer, "base64");
+    //   const getMediaData = await mediaMessage.downloadMedia();
+    //   const stickerBuffer = getMediaData.data.toString("base64");
+    //   const videoBuffer = Buffer.from(stickerBuffer, "base64");
 
-      fs.writeFileSync("./src/media/temp.mp4", videoBuffer);
+    //   fs.writeFileSync("./src/media/temp.mp4", videoBuffer);
 
-      const ffmpegProcess = spawn("ffmpeg", [
-        "-i",
-        "./src/media/temp.mp4",
-        "-vcodec",
-        "libwebp",
-        "-vf",
-        "scale=512:512",
-        "-loop",
-        "0",
-        "-ss",
-        "00:00:00.0",
-        "-t",
-        "00:00:05.0",
-        "-preset",
-        "default",
-        "-an",
-        "-vsync",
-        "0",
-        "-s",
-        "512x512",
-        "-f",
-        "webp",
-        "-y",
-        "./src/media/temp.webp",
-      ]);
+    //   const ffmpegProcess = spawn("ffmpeg", [
+    //     "-i",
+    //     "./src/media/temp.mp4",
+    //     "-vcodec",
+    //     "libwebp",
+    //     "-vf",
+    //     "scale=512:512",
+    //     "-loop",
+    //     "0",
+    //     "-ss",
+    //     "00:00:00.0",
+    //     "-t",
+    //     "00:00:05.0",
+    //     "-preset",
+    //     "default",
+    //     "-an",
+    //     "-vsync",
+    //     "0",
+    //     "-s",
+    //     "512x512",
+    //     "-f",
+    //     "webp",
+    //     "-y",
+    //     "./src/media/temp.webp",
+    //   ]);
 
-      ffmpegProcess.on("close", async (code) => {
-        console.log(`FFmpeg process exited with code ${code}`);
-        if (code === 0) {
-          await client.sendMessage(
-            message.from,
-            MessageMedia.fromFilePath("./src/media/temp.webp"),
-            {
-              sendMediaAsSticker: true,
-              stickerAuthor: "Anjinho Bot ",
-              stickerName: `Create by ${senderName}`,
-            }
-          );
-          // Delete the files after they have been sent
-          fs.unlinkSync("./src/media/temp.mp4");
-          fs.unlinkSync("./src/media/temp.webp");
-        }
-      });
+    //   ffmpegProcess.on("close", async (code) => {
+    //     console.log(`FFmpeg process exited with code ${code}`);
+    //     if (code === 0) {
+    //       await client.sendMessage(
+    //         message.from,
+    //         MessageMedia.fromFilePath("./src/media/temp.webp"),
+    //         {
+    //           sendMediaAsSticker: true,
+    //           stickerAuthor: "Anjinho Bot ",
+    //           stickerName: `Create by ${senderName}`,
+    //         }
+    //       );
+    //       // Delete the files after they have been sent
+    //       fs.unlinkSync("./src/media/temp.mp4");
+    //       fs.unlinkSync("./src/media/temp.webp");
+    //     }
+    //   });
 
-      ffmpegProcess.stdout.on("data", (data) => {
-        console.log(`stdout: ${data}`);
-      });
+    //   ffmpegProcess.stdout.on("data", (data) => {
+    //     console.log(`stdout: ${data}`);
+    //   });
 
-      ffmpegProcess.stderr.on("data", (data) => {
-        console.error(`stderr: ${data}`);
-      });
-    }
+    //   ffmpegProcess.stderr.on("data", (data) => {
+    //     console.error(`stderr: ${data}`);
+    //   });
+    // }
   } catch (error) {
     console.error(error);
     message.reply("Failed to fetch image.");
