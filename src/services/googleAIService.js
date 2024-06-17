@@ -26,7 +26,7 @@ const RETRY_DELAY = 10000; // atraso em milissegundos entre as tentativas
 export async function getGeminiResponse(prompt) {
   CHAT_HISTORY.push(prompt);
 
-  IF (CHAT_HISTORY.length > 10)
+  if (CHAT_HISTORY.length > 10)
   {
     CHAT_HISTORY.shift(); // remove o prompt mais antigo da lista se a lista tiver mais de 20 prompts
   }
