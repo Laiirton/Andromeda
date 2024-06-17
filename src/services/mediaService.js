@@ -19,7 +19,7 @@ export async function sendSticker(client, message, senderName) {
       await client.sendMessage(message.from, media, {
         sendMediaAsSticker: true,
         stickerAuthor: "Anjinho Bot ",
-        stickerName: `Create by ${senderName}`,
+        stickerName: `Created by ${senderName}`,
       });
     }
     console.log(`Sticker sent to ${senderName}`);
@@ -87,7 +87,6 @@ export async function sendSticker(client, message, senderName) {
     // }
   } catch (error) {
     console.error(error);
-    message.reply("Failed to fetch image.");
   }
 }
 
