@@ -18,7 +18,7 @@ export async function processMessage(client, message) {
   messageLog(message, senderName);
 
   // Generative AI Sistem
-  if (message.body.toLowerCase().startsWith("coiso")) {
+  if (message.body.toLowerCase().includes("coiso")) {
     try {
       let prompt;
       const quotedMessage = await message.getQuotedMessage();
