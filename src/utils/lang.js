@@ -1,5 +1,5 @@
 const menu = `
-'*!fig*': 'Cria uma figurinha a partir de uma imagem. Responda a uma imagem com este comando.',
+'*!fig*': 'Cria uma figurinha a partir de uma imagem ou vídeo de até 5 segundos.',
 '*!img*': 'Envia a imagem original de uma figurinha. Responda a uma figurinha com este comando.',
 '*!pussy*': 'Envia uma imagem aleatória de uma vagina.',
 '*!ass*': 'Envia uma imagem aleatória de um bumbum.',

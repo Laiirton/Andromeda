@@ -1,16 +1,15 @@
+// Import modules
 import pkg from "whatsapp-web.js";
 import { NSFW } from "nsfwhub";
-import sharp from "sharp";
 const { MessageMedia } = pkg;
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
-import { spawn } from "child_process";
-import path from "path";
 
+
+// Initialize modules
 const nsfw = new NSFW();
 
-
-
+// Constants
 const MAX_FILE_SIZE = 80000; // Defina o tamanho máximo do arquivo em bytes
 const WEBP_FILE_SIZE = 1000000;
 
@@ -43,6 +42,7 @@ export async function sendSticker(client, message, senderName) {
           stickerAuthor: 'Anjinho Bot',
           stickerName: `Created by ${senderName}`,
         });
+        await client.sendMessage(message.from, 'Here is your image sticker 😈');
         console.log(`Sticker enviado para ${senderName}`);
       } else if (mediaMessage.type === 'video') {
         const videoPath = './src/resources/media/temp-video.mp4';
@@ -105,9 +105,11 @@ export async function sendSticker(client, message, senderName) {
                     }
 
                     await client.sendMessage(message.from, webpSticker, {
-                      sendMediaAsSticker: true,
+                      sendMediaAsSticker: true, stickerAuthor: 'Anjinho Bot', stickerName: `Created by ${senderName}`
                     });
-                    console.log('Sticker de vídeo enviado');
+                    
+                    await client.sendMessage(message.from, 'Here is your video sticker 😈');
+                    console.log(`Sticker de vídeo enviado para ${senderName} em ${new Date().toLocaleString()}`);
                   } else {
                     console.error('Erro: O arquivo de saída webp não foi criado');
                   }
