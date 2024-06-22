@@ -7,7 +7,7 @@ import {
   getGeminiResponse,
   getGeminiTranscribe,
 } from "../services/googleAIService.js";
-import menu from "../utils/lang.js";
+import   menu from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 
@@ -145,6 +145,10 @@ export async function processMessage(client, message) {
 
       case "menu":
         message.reply(menu);
+        break;
+
+      case "nsfw":
+          message.reply(nsfwCommands);
         break;
 
       default:
