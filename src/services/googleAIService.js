@@ -4,10 +4,9 @@ import {
   HarmCategory,
   HarmBlockThreshold,
 } from "@google/generative-ai";
-import { FileState, GoogleAIFileManager } from "@google/generative-ai/files";
+import { GoogleAIFileManager } from "@google/generative-ai/files";
 import fs from "fs";
 import dotenv from "dotenv";
-import { resolve } from "path";
 dotenv.config();
 
 // Environment variables
