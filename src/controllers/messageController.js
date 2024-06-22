@@ -1,9 +1,5 @@
-import {
-  sendSticker,
-  sendImage,
-  sendNSFWImage,
-} from "../services/mediaService.js";
-import { getGeminiResponse } from "../services/googleAIService.js";
+import {sendSticker,sendImage,sendNSFWImage} from "../services/mediaService.js";
+import { getGeminiResponse, getGeminiTranscribe } from "../services/googleAIService.js";
 import  menu  from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 
@@ -58,6 +54,11 @@ export async function processMessage(client, message) {
     const [command] = message.body.toLowerCase().slice(1).split(" ");
 
     switch (command) {
+
+      case 'trans':
+        await getGeminiTranscribe(message);
+        break;
+
       case "fig":
         await sendSticker(client, message, senderName);
         break;
