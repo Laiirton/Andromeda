@@ -57,6 +57,7 @@ export async function processMessage(client, message) {
     }
   }
 
+  // Ollama Generative AI Sistem
   if (message.body.toLowerCase().includes("porrinha")) {
     try {
       let prompt;
