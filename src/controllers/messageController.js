@@ -1,16 +1,21 @@
-import {sendSticker,sendImage,sendNSFWImage} from "../services/mediaService.js";
-import { getGeminiResponse, getGeminiTranscribe } from "../services/googleAIService.js";
-import  menu  from "../utils/lang.js";
+import {
+  sendSticker,
+  sendImage,
+  sendNSFWImage,
+} from "../services/mediaService.js";
+import {
+  getGeminiResponse,
+  getGeminiTranscribe,
+} from "../services/googleAIService.js";
+import menu from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
-
+import { ollamaGenerate } from "../services/ollama.js";
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
 
-
-
-  // Log the all messages sended 
+  // Log the all messages sended
   messageLog(message, senderName);
 
   // Generative AI Sistem
@@ -45,7 +50,47 @@ export async function processMessage(client, message) {
       message.reply(response);
     } catch (error) {
       console.error(
-        `[${new Date().toLocaleString()}] Erro ao gerar resposta: ${error.message}`
+        `[${new Date().toLocaleString()}] Erro ao gerar resposta: ${
+          error.message
+        }`
+      );
+    }
+  }
+
+  if (message.body.toLowerCase().includes("porrinha")) {
+    try {
+      let prompt;
+      const quotedMessage = await message.getQuotedMessage();
+
+      if (quotedMessage) {
+        prompt =
+          quotedMessage.body.trim() +
+          " " +
+          message.body.replace("porrinha", "").trim();
+      } else {
+        prompt = message.body.replace("porrinha", "").trim();
+      }
+
+      if (!prompt) {
+        message.reply("Oi, você precisa me dizer o que deseja.");
+
+        throw new Error("O prompt não pode estar vazio.");
+      }
+
+      console.log(
+        `[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`
+      );
+      const response = await ollamaGenerate(prompt);
+
+      console.log(
+        `[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
+      );
+      message.reply(response);
+    } catch (error) {
+      console.error(
+        `[${new Date().toLocaleString()}] Erro ao gerar resposta: ${
+          error.message
+        }`
       );
     }
   }
@@ -54,8 +99,7 @@ export async function processMessage(client, message) {
     const [command] = message.body.toLowerCase().slice(1).split(" ");
 
     switch (command) {
-
-      case 'trans':
+      case "trans":
         await getGeminiTranscribe(message);
         break;
 
@@ -82,22 +126,22 @@ export async function processMessage(client, message) {
       case "dick":
         await sendNSFWImage(client, message, senderName, "dick");
         break;
-      
+
       case "futa":
         await sendNSFWImage(client, message, senderName, "futa");
         break;
 
       case "hentai":
         await sendNSFWImage(client, message, senderName, "hentai");
-        break
+        break;
 
       case "boobs":
-          await sendNSFWImage(client, message, senderName, "boobs");
-        break
+        await sendNSFWImage(client, message, senderName, "boobs");
+        break;
 
       case "gay":
-          await sendNSFWImage(client, message, senderName, "gay");
-        break
+        await sendNSFWImage(client, message, senderName, "gay");
+        break;
 
       case "menu":
         message.reply(menu);
