@@ -10,6 +10,8 @@ import {
 import   menu from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
+import { whisperTranscription } from "../services/whisper.js";
+
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
@@ -100,8 +102,15 @@ export async function processMessage(client, message) {
     const [command] = message.body.toLowerCase().slice(1).split(" ");
 
     switch (command) {
-      case "trans":
-        await getGeminiTranscribe(message);
+      case "test":
+        const quotedMessage = await message.getQuotedMessage();
+        const media = await quotedMessage.downloadMedia();
+
+        const audioBuffer = Buffer.from(media.data, "base64");
+        const transcription = await whisperTranscription(audioBuffer);
+        console.log("Transcription result:", transcription);
+
+
         break;
 
       case "fig":
