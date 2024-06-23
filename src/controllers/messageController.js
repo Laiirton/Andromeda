@@ -7,11 +7,10 @@ import {
   getGeminiResponse,
   getGeminiTranscribe,
 } from "../services/googleAIService.js";
-import   menu from "../utils/lang.js";
+import menu from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
-
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
@@ -103,14 +102,17 @@ export async function processMessage(client, message) {
 
     switch (command) {
       case "test":
+        // Baixa a mídia da mensagem e envia para a função do whisper
         const quotedMessage = await message.getQuotedMessage();
         const media = await quotedMessage.downloadMedia();
 
+        // transforma a mídia em buffer e envia para o whisper
         const audioBuffer = Buffer.from(media.data, "base64");
         const transcription = await whisperTranscription(audioBuffer);
         console.log("Transcription result:", transcription);
 
-
+        // Envia a transcrição para o usuário
+        await message.reply(transcription);
         break;
 
       case "fig":
@@ -158,7 +160,7 @@ export async function processMessage(client, message) {
         break;
 
       case "nsfw":
-          message.reply(nsfwCommands);
+        message.reply(nsfwCommands);
         break;
 
       default:
