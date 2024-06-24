@@ -101,7 +101,7 @@ export async function processMessage(client, message) {
     const [command] = message.body.toLowerCase().slice(1).split(" ");
 
     switch (command) {
-      case "test":
+      case "transcribe":
         // Baixa a mídia da mensagem e envia para a função do whisper
         const quotedMessage = await message.getQuotedMessage();
         const media = await quotedMessage.downloadMedia();

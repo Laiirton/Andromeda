@@ -191,13 +191,17 @@ export async function sendSticker(client, message, senderName) {
 }
 
 export async function sendImage(client, message) {
-  let figbase = message;
-  if (message.hasQuotedMsg) {
-    figbase = await message.getQuotedMessage();
-  }
-  if (figbase.hasMedia) {
-    const media = await figbase.downloadMedia();
-    await client.sendMessage(message.from, media);
+  try {
+    let figbase = message;
+    if (message.hasQuotedMsg) {
+      figbase = await message.getQuotedMessage();
+    }
+    if (figbase.hasMedia) {
+      const media = await figbase.downloadMedia();
+      await client.sendMessage(message.from, media);
+    }
+  } catch (error) {
+    console.error("Error function sendImage:", error);
   }
 }
 
