@@ -58,32 +58,30 @@ export async function processMessage(client, message) {
     }
   }
 
-  // Ollama Generative AI Sistem
   if (message.body.toLowerCase().includes("porrinha")) {
     try {
       let prompt;
       const quotedMessage = await message.getQuotedMessage();
-
+  
       if (quotedMessage) {
         prompt =
           quotedMessage.body.trim() +
           " " +
-          message.body.replace("porrinha", "").trim();
+          message.body.replace(/porrinha/i, "").trim();
       } else {
-        prompt = message.body.replace("porrinha", "").trim();
+        prompt = message.body.replace(/porrinha/i, "").trim();
       }
-
+  
       if (!prompt) {
         message.reply("Oi, você precisa me dizer o que deseja.");
-
         throw new Error("O prompt não pode estar vazio.");
       }
-
+  
       console.log(
         `[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`
       );
       const response = await ollamaGenerate(prompt);
-
+  
       console.log(
         `[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
       );
