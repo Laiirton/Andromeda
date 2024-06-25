@@ -8,4 +8,16 @@ Obs para pessoas burras: Se você tentar pedir algo que seja considerado contra 
 *!nsfw*: 'Para exibir os comandos NSFW.'
 `;
 
-export default menu;
+const menuNSFW = `
+*!dick*: 
+*!pussy*: 
+*!ass*: 
+*!ass*: 
+*!futa*: 
+*!hentai*: 
+*!gay*: 
+
+
+`;
+
+export { menu, menuNSFW };
