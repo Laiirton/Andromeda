@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 export async function ollamaGenerate(prompt, options = {}) {
   const url = 'http://localhost:11434/api/generate';
   const data = {
-    model: "Porrinha",
+    model: "qwen2_Q8",
     prompt: prompt,
     stream: false,
     ...options
