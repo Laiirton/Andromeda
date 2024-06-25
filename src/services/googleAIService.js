@@ -19,7 +19,7 @@ const model = genAI.getGenerativeModel({
 });
 
 const generationConfig = {
-  temperature: 0.7,
+  temperature: 0.8,
   topP: 0.95,
   topK: 64,
   maxOutputTokens: 8192,
@@ -27,7 +27,7 @@ const generationConfig = {
 };
 
 const MAX_RETRIES = 3; // número máximo de tentativas
-const RETRY_DELAY = 5000; // atraso em milissegundos entre as tentativas
+const RETRY_DELAY = 10000; // atraso em milissegundos entre as tentativas
 
 export async function getGeminiResponse(prompt) {
   let retries = 0;
