@@ -5,6 +5,7 @@ Obs para pessoas burras: Se você tentar pedir algo que seja considerado contra 
 *!fig*: 'Cria uma figurinha a partir de uma imagem ou vídeo de até 5 segundos.'
 *!transcribe*: 'Use esse comando em um audio para transcrever o audio em texto.'
 *!img*: 'Envia a imagem original de uma figurinha. Responda a uma figurinha com este comando.'
+*!delete*: 'Para pedir que ele delete a mensagem enviada.'
 *!nsfw*: 'Para exibir os comandos NSFW.'
 `;
 
