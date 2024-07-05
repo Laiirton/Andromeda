@@ -4,8 +4,7 @@ import {
   sendNSFWImage,
 } from "../services/mediaService.js";
 import {
-  getGeminiResponse,
-  getGeminiTranscribe,
+  getGeminiResponse
 } from "../services/googleAIService.js";
 import {menu,menuNSFW} from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
