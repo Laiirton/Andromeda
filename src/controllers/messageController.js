@@ -2,6 +2,7 @@ import {
   sendSticker,
   sendImage,
   sendNSFWImage,
+  searchRule34,
 } from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
 import { menu, menuNSFW } from "../utils/lang.js";
@@ -152,6 +153,11 @@ export async function processMessage(client, message) {
 
       case "gay":
         await sendNSFWImage(client, message, senderName, "gay");
+        break;
+
+      case "r34":
+        let prompt = message.body.slice(5).trim();
+        await searchRule34(client, message, senderName, [prompt]);
         break;
 
       case "menu":
