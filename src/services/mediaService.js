@@ -1,12 +1,11 @@
 // Import modules
 import pkg from "whatsapp-web.js";
-import { NSFW } from "nsfwhub";
 const { MessageMedia } = pkg;
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 
 // Initialize modules
-const nsfw = new NSFW();
+
 
 // Constants
 const MAX_FILE_SIZE = 80000; // Defina o tamanho máximo do arquivo em bytes
