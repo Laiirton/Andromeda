@@ -219,7 +219,7 @@ export async function sendNSFWImage(client, message, senderName, category) {
   } catch (error) {
     console.error(error);
     message.reply(
-      "An error occurred while trying to download the image, please try again."
+      "Under maintenance.😭"
     );
   }
 }
