@@ -4,6 +4,7 @@ const { MessageMedia } = pkg;
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import club from "club-atticus";
+import r34API from "0000000r34api";
 
 // Initialize modules
 const nsfw = new club();
@@ -220,6 +221,27 @@ export async function sendNSFWImage(client, message, senderName, category) {
     console.error(error);
     message.reply(
       "An error occurred while trying to download the image, please try again."
+    );
+  }
+}
+
+export async function searchRule34(client, message, senderName, category) {
+  try {
+
+    let imageurl = await r34API.rule34(category);
+
+    let urlFormated = imageurl.replace(/"/g, '');
+
+    const media = await MessageMedia.fromUrl(urlFormated);
+
+    await client.sendMessage(message.from, media);
+
+    console.log(`NSFW image ${category} sent to ${senderName} in ${new Date().toLocaleString()}`);
+
+  } catch (error) {
+    console.error(error);
+    message.reply(
+      "Image not found.🥺"
     );
   }
 }
