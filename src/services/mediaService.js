@@ -3,8 +3,10 @@ import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
+import club from "club-atticus";
 
 // Initialize modules
+const nsfw = new club();
 
 
 // Constants
@@ -206,13 +208,14 @@ export async function sendImage(client, message) {
 
 export async function sendNSFWImage(client, message, senderName, category) {
   try {
-    const nsfw_image = await nsfw.fetch(category);
-    const image_url = nsfw_image.image.url;
-    const media = await MessageMedia.fromUrl(image_url);
+
+    const nsfwImage = await nsfw[category]();
+
+    const media = await MessageMedia.fromUrl(nsfwImage);
+
     await client.sendMessage(message.from, media);
-    console.log(
-      `${category} image sent to ${senderName} at ${new Date().toLocaleString()}`
-    );
+
+   
   } catch (error) {
     console.error(error);
     message.reply(
