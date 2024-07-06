@@ -216,7 +216,6 @@ export async function sendNSFWImage(client, message, senderName, category) {
 
     await client.sendMessage(message.from, media);
 
-   
   } catch (error) {
     console.error(error);
     message.reply(
