@@ -3,10 +3,8 @@ import {
   sendImage,
   sendNSFWImage,
 } from "../services/mediaService.js";
-import {
-  getGeminiResponse
-} from "../services/googleAIService.js";
-import {menu,menuNSFW} from "../utils/lang.js";
+import { getGeminiResponse } from "../services/googleAIService.js";
+import { menu, menuNSFW } from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
@@ -61,7 +59,7 @@ export async function processMessage(client, message) {
     try {
       let prompt;
       const quotedMessage = await message.getQuotedMessage();
-  
+
       if (quotedMessage) {
         prompt =
           quotedMessage.body.trim() +
@@ -70,17 +68,17 @@ export async function processMessage(client, message) {
       } else {
         prompt = message.body.replace(/porrinha/i, "").trim();
       }
-  
+
       if (!prompt) {
         message.reply("Oi, você precisa me dizer o que deseja.");
         throw new Error("O prompt não pode estar vazio.");
       }
-  
+
       console.log(
         `[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`
       );
       const response = await ollamaGenerate(prompt);
-  
+
       console.log(
         `[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
       );
@@ -142,6 +140,10 @@ export async function processMessage(client, message) {
 
       case "hentai":
         await sendNSFWImage(client, message, senderName, "hentai");
+        break;
+
+      case "yaoi":
+        await sendNSFWImage(client, message, senderName, "yaoi");
         break;
 
       case "boobs":
