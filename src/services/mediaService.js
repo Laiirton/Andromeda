@@ -9,7 +9,6 @@ import r34API from "0000000r34api";
 // Initialize modules
 const nsfw = new club();
 
-
 // Constants
 const MAX_FILE_SIZE = 80000; // Defina o tamanho máximo do arquivo em bytes
 const WEBP_FILE_SIZE = 1000000;
@@ -209,38 +208,36 @@ export async function sendImage(client, message) {
 
 export async function sendNSFWImage(client, message, senderName, category) {
   try {
+    if (nsfw[category]) {
 
-    const nsfwImage = await nsfw[category]();
+      console.log(`Sending NSFW image ${category} to ${senderName} in ${new Date().toLocaleString()}`);
+      const nsfwImage = await nsfw[category]();
 
-    const media = await MessageMedia.fromUrl(nsfwImage);
+      const media = await MessageMedia.fromUrl(nsfwImage);
 
-    await client.sendMessage(message.from, media);
-
+      await client.sendMessage(message.from, media);
+    }
   } catch (error) {
     console.error(error);
-    message.reply(
-      "Under maintenance.😭"
-    );
+    message.reply("Under maintenance.😭");
   }
 }
 
 export async function searchRule34(client, message, senderName, category) {
   try {
-
     let imageurl = await r34API.rule34(category);
 
-    let urlFormated = imageurl.replace(/"/g, '');
+    let urlFormated = imageurl.replace(/"/g, "");
 
     const media = await MessageMedia.fromUrl(urlFormated);
 
     await client.sendMessage(message.from, media);
 
-    console.log(`NSFW image ${category} sent to ${senderName} in ${new Date().toLocaleString()}`);
-
+    console.log(
+      `NSFW image ${category} sent to ${senderName} in ${new Date().toLocaleString()}`
+    );
   } catch (error) {
     console.error(error);
-    message.reply(
-      "Image not found.🥺"
-    );
+    message.reply("Image not found.🥺");
   }
 }
