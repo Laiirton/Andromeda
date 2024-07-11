@@ -9,10 +9,52 @@ import { menu, menuNSFW } from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
+import fs from "fs";
+import path from "path";
+
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
+
+
+  // Save media received
+  if (message.hasMedia) {
+    try {
+      const media = await message.downloadMedia();
+  
+      // 1. Definir a pasta de destino
+      const downloadsFolder = path.join('./src/media/');
+  
+      // 2. Criar a pasta se não existir
+      if (!fs.existsSync(downloadsFolder)) {
+        fs.mkdirSync(downloadsFolder);
+      }
+  
+      // 3. Criar um nome de arquivo único
+      const extension = media.mimetype.split('/')[1]; 
+      const filename = `media-${Date.now()}.${extension}`; 
+  
+      // 4. Caminho completo para salvar o arquivo
+      const filePath = path.join(downloadsFolder, filename);
+  
+      // 5. Converter dados binários para um formato gravável
+      const buffer = Buffer.from(media.data, 'base64');
+  
+      // 6. Gravar o arquivo
+      fs.writeFile(filePath, buffer, (err) => {
+        if (err) {
+          console.error("Erro ao salvar mídia:", err);
+        } else {
+          console.log(`Mídia salva com sucesso em: ${filePath}`);
+        }
+      });
+  
+    } catch (error) {
+      console.error("Erro ao baixar mídia:", error);
+    }
+  }
+
 
   // Log the all messages sended
   messageLog(message, senderName);
