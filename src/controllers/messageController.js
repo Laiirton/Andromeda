@@ -23,6 +23,14 @@ export async function processMessage(client, message) {
     try {
       const media = await message.downloadMedia();
   
+      // Função para formatar a data no formato dd_mm_yyyy
+      function formatDate(date) {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Mês começa em 0
+        const year = date.getFullYear();
+        return `${day}_${month}_${year}`;
+      }
+  
       // 1. Definir a pasta de destino
       const downloadsFolder = path.join('./src/media/');
   
@@ -31,9 +39,11 @@ export async function processMessage(client, message) {
         fs.mkdirSync(downloadsFolder);
       }
   
-      // 3. Criar um nome de arquivo único
-      const extension = media.mimetype.split('/')[1]; 
-      const filename = `media-${Date.now()}.${extension}`; 
+      // 3. Criar um nome de arquivo único com data formatada e nome do remetente
+      const extension = media.mimetype.split('/')[1];
+      const formattedDate = formatDate(new Date());
+      const sanitizedSenderName = senderName.replace(/\s+/g, '_'); // Substitui espaços por underscores
+      const filename = `media-${formattedDate}-${sanitizedSenderName}-${Date.now()}.${extension}`;
   
       // 4. Caminho completo para salvar o arquivo
       const filePath = path.join(downloadsFolder, filename);
