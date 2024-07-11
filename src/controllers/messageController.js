@@ -43,7 +43,7 @@ export async function processMessage(client, message) {
       const extension = media.mimetype.split('/')[1];
       const formattedDate = formatDate(new Date());
       const sanitizedSenderName = senderName.replace(/\s+/g, '_'); // Substitui espaços por underscores
-      const filename = `media-${formattedDate}-${sanitizedSenderName}-${Date.now()}.${extension}`;
+      const filename = `media-${formattedDate}-${sanitizedSenderName}.${extension}`;
   
       // 4. Caminho completo para salvar o arquivo
       const filePath = path.join(downloadsFolder, filename);
