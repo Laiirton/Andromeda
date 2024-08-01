@@ -17,55 +17,6 @@ export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
 
-
-  // Save media received
-  if (message.hasMedia) {
-    try {
-      const media = await message.downloadMedia();
-  
-      // Função para formatar a data no formato dd_mm_yyyy
-      function formatDate(date) {
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // Mês começa em 0
-        const year = date.getFullYear();
-        return `${day}_${month}_${year}`;
-      }
-  
-      // 1. Definir a pasta de destino
-      const downloadsFolder = path.join('./src/media/');
-  
-      // 2. Criar a pasta se não existir
-      if (!fs.existsSync(downloadsFolder)) {
-        fs.mkdirSync(downloadsFolder);
-      }
-  
-      // 3. Criar um nome de arquivo único com data formatada e nome do remetente
-      const extension = media.mimetype.split('/')[1];
-      const formattedDate = formatDate(new Date());
-      const sanitizedSenderName = senderName.replace(/\s+/g, '_'); // Substitui espaços por underscores
-      const filename = `media-${formattedDate}-${sanitizedSenderName}.${extension}`;
-  
-      // 4. Caminho completo para salvar o arquivo
-      const filePath = path.join(downloadsFolder, filename);
-  
-      // 5. Converter dados binários para um formato gravável
-      const buffer = Buffer.from(media.data, 'base64');
-  
-      // 6. Gravar o arquivo
-      fs.writeFile(filePath, buffer, (err) => {
-        if (err) {
-          console.error("Erro ao salvar mídia:", err);
-        } else {
-          console.log(`Mídia salva com sucesso em: ${filePath}`);
-        }
-      });
-  
-    } catch (error) {
-      console.error("Erro ao baixar mídia:", error);
-    }
-  }
-
-
   // Log the all messages sended
   messageLog(message, senderName);
 
