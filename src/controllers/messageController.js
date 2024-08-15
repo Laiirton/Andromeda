@@ -9,6 +9,7 @@ import { menu, menuNSFW } from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
+import { printGroupList } from "../utils/messageScheduler.js";
 
 
 
@@ -169,7 +170,9 @@ export async function processMessage(client, message) {
       case "nsfw":
         message.reply(menuNSFW);
         break;
-
+      case "groups":
+        await printGroupList(client);
+        break
       default:
         message.reply(
           "Invalid command, try !menu to see the available commands."

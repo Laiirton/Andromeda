@@ -1,20 +1,23 @@
 import { initWhatsappClient } from "./utils/whatsappClient.js";
 import { processMessage } from "./controllers/messageController.js";
+import { initializeMessageScheduler } from "./utils/messageScheduler.js";
 
 const client = initWhatsappClient();
+const messageScheduler = initializeMessageScheduler(client);
 
 client.on("ready", () => {
   console.log("Client is ready!");
+  messageScheduler.start(); // Inicia o agendamento quando o cliente estiver pronto
 });
 
 client.on("message", async (message) => {
   try {
     await processMessage(client, message);
+
   } catch (error) {
     console.error(`Error processing message: ${error}`);
   }
 });
-
 
 client.on("auth_failure", () => {
   console.error("Authentication failure. Check your credentials.");

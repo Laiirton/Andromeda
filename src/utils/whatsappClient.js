@@ -1,7 +1,7 @@
 import pkg from "whatsapp-web.js";
 import qrcode from "qrcode-terminal";
 
-const { Client, LocalAuth } = pkg;
+const { Client, LocalAuth, MessageMedia } = pkg;
 
 export function initWhatsappClient() {
   const client = new Client({
