@@ -9,8 +9,7 @@ import { menu, menuNSFW } from "../utils/lang.js";
 import { deleteMessage, messageLog } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
-import fs from "fs";
-import path from "path";
+
 
 
 export async function processMessage(client, message) {
