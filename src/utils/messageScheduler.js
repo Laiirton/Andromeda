@@ -9,29 +9,28 @@ export function initializeMessageScheduler(client) {
   }
 
   function scheduleMessages() {
-    // Agenda para segunda a sexta (1-5 representa segunda a sexta no cron)
     
-    // 08:00 - Início do expediente
+    // 08:00 
     cron.schedule('0 8 * * 1-5', () => {
       sendMessageToGroup("Bom dia! Lembrete: Não se esqueça de bater o ponto de entrada. 💀");
     });
 
-    // 12:00 - Saída para almoço
+    // 12:00 
     cron.schedule('0 12 * * 1-5', () => {
       sendMessageToGroup("Hora do almoço! Lembre-se de bater o ponto. 😋");
     });
 
-    // 13:00 - Retorno do almoço
+    // 13:00 
     cron.schedule('0 13 * * 1-5', () => {
       sendMessageToGroup("Boa tarde! Não se esqueça de bater o ponto de retorno. 👾");
     });
 
-    // 17:00 - Lembrete de fim de expediente se aproximando
+    // 17:00 
     cron.schedule('0 17 * * 1-5', () => {
       sendMessageToGroup("Atenção: Falta uma hora para o fim do expediente. Prepare-se para bater o ponto de saída em breve. 🤟");
     });
 
-    // 18:00 - Fim do expediente
+    // 18:00 
     cron.schedule('0 18 * * 1-5', () => {
       sendMessageToGroup("Fim do expediente! Não se esqueça de bater o ponto de saída. Bom descanso! 😈");
     });
