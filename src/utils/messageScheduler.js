@@ -1,56 +1,11 @@
 import cron from "node-cron";
-import { sendSticker } from "../services/mediaService.js";
-import aflb from "aflb";
-import pkg from "whatsapp-web.js";
-const { MessageMedia } = pkg;
 
 export function initializeMessageScheduler(client) {
   const groupId = "120363186217488014@g.us";
 
-  async function getRandomImageFromCategories(categories) {
-    const chosenCategory =
-      categories[Math.floor(Math.random() * categories.length)];
-    const imageUrl = aflb.sfw[chosenCategory]();
-
-    // Verifica se a URL termina com ".gif" (ou seja, é um GIF)
-    if (imageUrl.endsWith(".gif")) {
-      // É um GIF, use a função sendSticker
-      const media = await MessageMedia.fromUrl(imageUrl);
-      return { media, isGif: true };
-    } else {
-      // É uma imagem estática
-      const media = await MessageMedia.fromUrl(imageUrl);
-      return { media, isGif: false };
-    }
-  }
-
-  async function sendMessageToGroup(message) {
-    // Envio de mensagem em texto
-    await client.sendMessage(groupId, message);
+  function sendMessageToGroup(message) {
+    client.sendMessage(groupId, message);
     console.log(`Mensagem enviada para o grupo: ${message}`);
-
-    // Envio de figurinha
-    const { media, isGif } = await getRandomImageFromCategories([
-      "dance",
-      "happy",
-      "bored",
-      "baka",
-      "angry",
-      "meow",
-      "cry",
-    ]);
-
-    if (isGif) {
-      // Envia GIF como sticker usando sendSticker
-      await sendSticker(client, { from: groupId }, "😈", media); // Adapte para o seu caso
-    } else {
-      // Envia imagem estática como sticker
-      await client.sendMessage(groupId, media, {
-        sendMediaAsSticker: true,
-        stickerAuthor: "Anjinho Bot",
-        stickerName: `Created by Anjinho Bot`, // Adapte para o seu caso
-      });
-    }
   }
 
   function scheduleMessages() {
@@ -75,18 +30,22 @@ export function initializeMessageScheduler(client) {
 
     // 14:00
     cron.schedule("0 14 * * 1-5", () => {
-      sendMessageToGroup("Bata o pontooooooo 🥺");
+      sendMessageToGroup(
+        "Bata o pontooooooo 🥺"
+      );
     });
 
     // 17:00
     cron.schedule("0 17 * * 1-5", () => {
-      sendMessageToGroup("Atenção: Não esqueça do pontooo. 🤟");
+      sendMessageToGroup(
+        "Atenção: Falta uma hora para o fim do expediente. Prepare-se para bater o ponto de saída em breve. 🤟"
+      );
     });
 
     // 18:00
     cron.schedule("0 18 * * 1-5", () => {
       sendMessageToGroup(
-        "Não se esqueça de bater o ponto de saída. Bom descanso! 😈"
+        "Fim do expediente! Não se esqueça de bater o ponto de saída. Bom descanso! 😈"
       );
     });
   }
