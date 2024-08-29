@@ -1,12 +1,25 @@
 import cron from "node-cron";
-import HMfull from "hmfull";
+import { getCuddleImage } from "../services/mediaService.js";
 
 export function initializeMessageScheduler(client) {
   const groupId = "120363186217488014@g.us";
 
-  function sendMessageToGroup(message) {
-    client.sendMessage(groupId, message);
-    console.log(`Mensagem enviada para o grupo: ${message}`);
+  async function sendMessageToGroup(message) {
+    try {
+      await client.sendMessage(groupId, message);
+      console.log(`Mensagem enviada para o grupo: ${message}`);
+
+      // Envio de figurinhas kawaii 
+      const sticker = await getCuddleImage();
+
+      await client.sendMessage(groupId, sticker, {
+        sendMediaAsSticker: true,
+        stickerAuthor: "Anjinho Bot",
+        stickerName: `Created by 😈`,
+      });
+    } catch (error) {
+      console.error(`Erro ao enviar mensagem para o grupo: ${error.message}`);
+    }
   }
 
   function scheduleMessages() {
