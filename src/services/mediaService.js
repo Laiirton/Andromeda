@@ -5,6 +5,7 @@ import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import club from "club-atticus";
 import r34API from "0000000r34api";
+import HMfull from "hmfull";
 
 // Initialize modules
 const nsfw = new club();
@@ -239,4 +240,17 @@ export async function searchRule34(client, message, senderName, category) {
     console.error(error);
     message.reply("Image not found.🥺");
   }
+}
+
+export async function getCuddleImage()
+{
+
+  let responseApi = await HMfull.Nekos.sfw.cuddle();
+
+  let CuddleFig = responseApi.url;
+
+  const media = await MessageMedia.fromUrl(CuddleFig);
+
+  return media;
+
 }
