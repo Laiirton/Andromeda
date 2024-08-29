@@ -10,7 +10,6 @@ import r34API from "0000000r34api";
 const nsfw = new club();
 
 // Constants
-const MAX_FILE_SIZE = 80000; // Defina o tamanho máximo do arquivo em bytes
 const WEBP_FILE_SIZE = 1000000;
 
 export async function sendSticker(client, message, senderName) {
