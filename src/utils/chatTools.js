@@ -46,3 +46,35 @@ export async function messageLog(message, senderName) {
     );
   }
 }
+
+async function getGroupList(client) {
+  try {
+    // Obtém todos os chats
+    const chats = await client.getChats();
+
+    // Filtra apenas os grupos
+    const groups = chats.filter((chat) => chat.isGroup);
+
+    // Mapeia os grupos para um array de objetos com nome e id
+    const groupList = groups.map((group) => ({
+      name: group.name,
+      id: group.id._serialized,
+    }));
+
+    return groupList;
+  } catch (error) {
+    console.error("Erro ao obter lista de grupos:", error);
+    return [];
+  }
+}
+
+export async function printGroupList(client) {
+  const groups = await getGroupList(client);
+
+  console.log("Lista de Grupos:");
+  groups.forEach((group) => {
+    console.log(`Nome: ${group.name}`);
+    console.log(`ID: ${group.id}`);
+    console.log("---");
+  });
+}
