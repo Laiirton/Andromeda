@@ -6,10 +6,9 @@ import {
 } from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
 import { menu, menuNSFW } from "../utils/lang.js";
-import { deleteMessage, messageLog } from "../utils/chatTools.js";
+import { deleteMessage, messageLog, printGroupList } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
-import { printGroupList } from "../utils/messageScheduler.js";
 
 
 
