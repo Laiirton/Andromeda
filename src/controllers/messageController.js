@@ -10,7 +10,34 @@ import { deleteMessage, messageLog, printGroupList } from "../utils/chatTools.js
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
 
+const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
+const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
 
+async function handleGenerativeAI(message, senderName, keyword, generateResponse) {
+  try {
+    let prompt;
+    const quotedMessage = await message.getQuotedMessage();
+
+    if (quotedMessage) {
+      prompt = `${quotedMessage.body.trim()} ${message.body.replace(new RegExp(keyword, 'i'), '').trim()}`;
+    } else {
+      prompt = message.body.replace(new RegExp(keyword, 'i'), '').trim();
+    }
+
+    if (!prompt) {
+      message.reply(PROMPT_REPLY);
+      throw new Error(EMPTY_PROMPT_ERROR);
+    }
+
+    console.log(`[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`);
+    const response = await generateResponse(prompt);
+
+    console.log(`[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`);
+    message.reply(response);
+  } catch (error) {
+    console.error(`[${new Date().toLocaleString()}] Erro ao gerar resposta: ${error.message}`);
+  }
+}
 
 export async function processMessage(client, message) {
   const contact = await message.getContact();
@@ -21,78 +48,11 @@ export async function processMessage(client, message) {
 
   // Generative AI Sistem
   if (message.body.toLowerCase().includes("coiso")) {
-    try {
-      let prompt;
-      const quotedMessage = await message.getQuotedMessage();
-
-      if (quotedMessage) {
-        prompt =
-          quotedMessage.body.trim() +
-          " " +
-          message.body.replace("coiso", "").trim();
-      } else {
-        prompt = message.body.replace("coiso", "").trim();
-      }
-
-      if (!prompt) {
-        message.reply("Oi, você precisa me dizer o que deseja.");
-
-        throw new Error("O prompt não pode estar vazio.");
-      }
-
-      console.log(
-        `[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`
-      );
-      const response = await getGeminiResponse(prompt);
-
-      console.log(
-        `[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
-      );
-      message.reply(response);
-    } catch (error) {
-      console.error(
-        `[${new Date().toLocaleString()}] Erro ao gerar resposta: ${
-          error.message
-        }`
-      );
-    }
+    await handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
   }
 
   if (message.body.toLowerCase().includes("porrinha")) {
-    try {
-      let prompt;
-      const quotedMessage = await message.getQuotedMessage();
-
-      if (quotedMessage) {
-        prompt =
-          quotedMessage.body.trim() +
-          " " +
-          message.body.replace(/porrinha/i, "").trim();
-      } else {
-        prompt = message.body.replace(/porrinha/i, "").trim();
-      }
-
-      if (!prompt) {
-        message.reply("Oi, você precisa me dizer o que deseja.");
-        throw new Error("O prompt não pode estar vazio.");
-      }
-
-      console.log(
-        `[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`
-      );
-      const response = await ollamaGenerate(prompt);
-
-      console.log(
-        `[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
-      );
-      message.reply(response);
-    } catch (error) {
-      console.error(
-        `[${new Date().toLocaleString()}] Erro ao gerar resposta: ${
-          error.message
-        }`
-      );
-    }
+    await handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
   }
 
   if (message.body.startsWith("!")) {
@@ -100,16 +60,11 @@ export async function processMessage(client, message) {
 
     switch (command) {
       case "transcribe":
-        // Baixa a mídia da mensagem e envia para a função do whisper
         const quotedMessage = await message.getQuotedMessage();
         const media = await quotedMessage.downloadMedia();
-
-        // transforma a mídia em buffer e envia para o whisper
         const audioBuffer = Buffer.from(media.data, "base64");
         const transcription = await whisperTranscription(audioBuffer);
         console.log("Transcription result:", transcription);
-
-        // Envia a transcrição para o usuário
         await message.reply(transcription);
         break;
 
@@ -126,35 +81,14 @@ export async function processMessage(client, message) {
         break;
 
       case "pussy":
-        await sendNSFWImage(client, message, senderName, "pussy");
-        break;
-
       case "ass":
-        await sendNSFWImage(client, message, senderName, "ass");
-        break;
-
       case "dick":
-        await sendNSFWImage(client, message, senderName, "dick");
-        break;
-
       case "futa":
-        await sendNSFWImage(client, message, senderName, "futa");
-        break;
-
       case "hentai":
-        await sendNSFWImage(client, message, senderName, "hentai");
-        break;
-
       case "yaoi":
-        await sendNSFWImage(client, message, senderName, "yaoi");
-        break;
-
       case "boobs":
-        await sendNSFWImage(client, message, senderName, "boobs");
-        break;
-
       case "gay":
-        await sendNSFWImage(client, message, senderName, "gay");
+        await sendNSFWImage(client, message, senderName, command);
         break;
 
       case "r34":
@@ -169,13 +103,13 @@ export async function processMessage(client, message) {
       case "nsfw":
         message.reply(menuNSFW);
         break;
+
       case "groups":
         await printGroupList(client);
-        break
+        break;
+
       default:
-        message.reply(
-          "Invalid command, try !menu to see the available commands."
-        );
+        message.reply("Invalid command, try !menu to see the available commands.");
     }
   }
 }
