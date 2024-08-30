@@ -4,7 +4,7 @@ Meu projeto pessoal ❤️
 
 Andromeda é um bot para WhatsApp que oferece diversas funcionalidades, incluindo a criação de figurinhas, transcrição de áudios, busca de imagens NSFW, e muito mais.
 
-![Andromeda Bot](https://br.pinterest.com/pin/485825878571572278/)
+![Andromeda Bot](https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExMTVwM2h6cmRkODh1N3F4dnozNXFheXluanlxOWwwOTlmaGNnbDMwMSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/vP5gXvSXJ2olG/giphy.webp)
 
 ## Funcionalidades
 
