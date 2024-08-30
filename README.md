@@ -14,19 +14,6 @@ Andromeda é um bot para WhatsApp que oferece diversas funcionalidades, incluind
 - **Deleção de Mensagens**: Deleta mensagens enviadas.
 - **Agendamento de Mensagens**: Envia mensagens agendadas para um grupo específico.
 
-## Estrutura do Projeto
-
-- `src/index.js`: Ponto de entrada do bot. Inicializa o cliente do WhatsApp e configura os eventos.
-- `src/services/mediaService.js`: Contém funções para manipulação de mídia, como criação de figurinhas e envio de imagens.
-- `src/services/whisper.js`: Contém a função para transcrição de áudios usando a API Whisper.
-- `src/services/googleAIService.js`: Contém funções para interação com a API do Google Generative AI.
-- `src/services/ollama.js`: Contém a função para gerar respostas usando a API Ollama.
-- `src/utils/whatsappClient.js`: Inicializa o cliente do WhatsApp.
-- `src/utils/lang.js`: Contém os menus de comandos.
-- `src/utils/chatTools.js`: Contém funções utilitárias para manipulação de mensagens.
-- `src/utils/messageScheduler.js`: Configura o agendamento de mensagens.
-- `src/controllers/messageController.js`: Processa as mensagens recebidas e executa os comandos apropriados.
-
 ## Comandos Disponíveis
 
 - `!fig`: Cria uma figurinha a partir de uma imagem ou vídeo de até 5 segundos.
