@@ -91,12 +91,12 @@ export async function getGeminiTranscribe(message) {
   
     mediaMessage = await mediaMessage.downloadMedia();
   
-    fs.writeFileSync("./src/resources/media/audio.ogg", mediaMessage.data, {
+    fs.writeFileSync("./src/media/audio.ogg", mediaMessage.data, {
       encoding: "base64",
     });
     console.log("Arquivo de áudio salvo com sucesso!");
   
-    const audioMessage = "./src/resources/media/audio.ogg";
+    const audioMessage = "./src/media/audio.ogg";
   
     const audioUpload = await fileManager.uploadFile(audioMessage, {
       mimeType: "audio/ogg",
