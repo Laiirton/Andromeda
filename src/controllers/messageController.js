@@ -39,65 +39,6 @@ async function handleGenerativeAI(message, senderName, keyword, generateResponse
   }
 }
 
-async function handleCommand(client, message, command) {
-  const contact = await message.getContact();
-  const senderName = contact.pushname;
-
-  switch (command) {
-    case "transcribe":
-      const quotedMessage = await message.getQuotedMessage();
-      const media = await quotedMessage.downloadMedia();
-      const audioBuffer = Buffer.from(media.data, "base64");
-      const transcription = await whisperTranscription(audioBuffer);
-      console.log("Transcription result:", transcription);
-      await message.reply(transcription);
-      break;
-
-    case "fig":
-      await sendSticker(client, message, senderName);
-      break;
-
-    case "img":
-      await sendImage(client, message);
-      break;
-
-    case "delete":
-      await deleteMessage(message, senderName);
-      break;
-
-    case "pussy":
-    case "ass":
-    case "dick":
-    case "futa":
-    case "hentai":
-    case "yaoi":
-    case "boobs":
-    case "gay":
-      await sendNSFWImage(client, message, senderName, command);
-      break;
-
-    case "r34":
-      let prompt = message.body.slice(5).trim();
-      await searchRule34(client, message, senderName, [prompt]);
-      break;
-
-    case "menu":
-      message.reply(menu);
-      break;
-
-    case "nsfw":
-      message.reply(menuNSFW);
-      break;
-
-    case "groups":
-      await printGroupList(client);
-      break;
-
-    default:
-      message.reply("Invalid command, try !menu to see the available commands.");
-  }
-}
-
 export async function processMessage(client, message) {
   const contact = await message.getContact();
   const senderName = contact.pushname;
@@ -114,9 +55,61 @@ export async function processMessage(client, message) {
     await handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
   }
 
-  // Command Handler
   if (message.body.startsWith("!")) {
     const [command] = message.body.toLowerCase().slice(1).split(" ");
-    await handleCommand(client, message, command);
+
+    switch (command) {
+      case "transcribe":
+        const quotedMessage = await message.getQuotedMessage();
+        const media = await quotedMessage.downloadMedia();
+        const audioBuffer = Buffer.from(media.data, "base64");
+        const transcription = await whisperTranscription(audioBuffer);
+        console.log("Transcription result:", transcription);
+        await message.reply(transcription);
+        break;
+
+      case "fig":
+        await sendSticker(client, message, senderName);
+        break;
+
+      case "img":
+        await sendImage(client, message);
+        break;
+
+      case "delete":
+        await deleteMessage(message, senderName);
+        break;
+
+      case "pussy":
+      case "ass":
+      case "dick":
+      case "futa":
+      case "hentai":
+      case "yaoi":
+      case "boobs":
+      case "gay":
+        await sendNSFWImage(client, message, senderName, command);
+        break;
+
+      case "r34":
+        let prompt = message.body.slice(5).trim();
+        await searchRule34(client, message, senderName, [prompt]);
+        break;
+
+      case "menu":
+        message.reply(menu);
+        break;
+
+      case "nsfw":
+        message.reply(menuNSFW);
+        break;
+
+      case "groups":
+        await printGroupList(client);
+        break;
+
+      default:
+        message.reply("Invalid command, try !menu to see the available commands.");
+    }
   }
 }
