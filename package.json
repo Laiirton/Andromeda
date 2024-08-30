@@ -7,8 +7,8 @@
   "scripts": {
     "start": "node src/index.js"
   },
-  "author": "anjinho ruindade pura",
-  "license": "ISC",
+  "author": "Lairton",
+  "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.12.0",
     "0000000r34api": "^1.6.0",
