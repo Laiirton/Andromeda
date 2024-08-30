@@ -242,15 +242,55 @@ export async function searchRule34(client, message, senderName, category) {
   }
 }
 
-export async function getCuddleImage()
-{
-
+export async function getCuddleImage() {
   let responseApi = await HMfull.Nekos.sfw.cuddle();
-
   let CuddleFig = responseApi.url;
 
   const media = await MessageMedia.fromUrl(CuddleFig);
 
-  return media;
+  // Verifica se a mídia é um GIF
+  if (CuddleFig.endsWith(".gif")) {
+    const gifPath = "./src/resources/media/temp-cuddle.gif";
+    const outputWebpPath = "./src/resources/media/cuddle-sticker.webp";
 
+    // Baixa o GIF
+    const gifData = await fetch(CuddleFig).then(res => res.arrayBuffer());
+    const buffer = Buffer.from(gifData); // Converte ArrayBuffer para Buffer
+    fs.writeFileSync(gifPath, buffer);
+
+    // Converte o GIF para WebP animado
+    await new Promise((resolve, reject) => {
+      ffmpeg(gifPath)
+        .outputOptions([
+          "-vcodec", "libwebp",
+          "-vf", "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
+          "-loop", "0",
+          "-preset", "default",
+          "-an",
+          "-vsync", "0",
+          "-s", "240:240",
+          "-quality", "80",
+          "-lossless", "0",
+          "-compression_level", "6",
+          "-q:v", "50",
+          "-pix_fmt", "yuv420p",
+          "-f", "webp"
+        ])
+        .toFormat("webp")
+        .save(outputWebpPath)
+        .on("end", resolve)
+        .on("error", reject);
+    });
+
+    // Limpa o arquivo temporário
+    fs.unlinkSync(gifPath);
+
+    const webpMedia = MessageMedia.fromFilePath(outputWebpPath);
+
+    console.log(webpMedia);
+
+    return webpMedia;
+  }
+
+  return media;
 }
