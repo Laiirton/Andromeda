@@ -42,9 +42,9 @@ export async function sendSticker(client, message, senderName) {
         await client.sendMessage(message.from, "Here is your image sticker 😈");
         console.log(`Sticker enviado para ${senderName}`);
       } else if (mediaMessage.type === "video") {
-        const videoPath = "./src/resources/media/temp-video.mp4";
-        const reducedVideoPath = "./src/resources/media/reduced-video.mp4";
-        const outputWebpPath = "./src/resources/media/output.webp";
+        const videoPath = "./src/media/temp-video.mp4";
+        const reducedVideoPath = "./src/media/reduced-video.mp4";
+        const outputWebpPath = "./src/media/output.webp";
 
         try {
           fs.writeFileSync(videoPath, media.data, "base64");
@@ -250,8 +250,8 @@ export async function getCuddleImage() {
 
   // Verifica se a mídia é um GIF
   if (CuddleFig.endsWith(".gif")) {
-    const gifPath = "./src/resources/media/temp-cuddle.gif";
-    const outputWebpPath = "./src/resources/media/cuddle-sticker.webp";
+    const gifPath = "./src/media/temp-cuddle.gif";
+    const outputWebpPath = "./src/media/cuddle-sticker.webp";
 
     // Baixa o GIF
     const gifData = await fetch(CuddleFig).then(res => res.arrayBuffer());
