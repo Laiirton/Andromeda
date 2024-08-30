@@ -11,17 +11,17 @@ import HMfull from "hmfull";
 const nsfw = new club();
 
 // Constants
-const WEBP_FILE_SIZE = 1000000;
+const WEBP_FILE_SIZE = 1000000; // Tamanho máximo permitido para arquivos WebP
 
 export async function sendSticker(client, message, senderName) {
   try {
     let mediaMessage = message;
     if (message.hasQuotedMsg) {
-      mediaMessage = await message.getQuotedMessage();
+      mediaMessage = await message.getQuotedMessage(); // Obtém a mensagem citada, se houver
     }
 
     if (mediaMessage.hasMedia) {
-      const media = await mediaMessage.downloadMedia();
+      const media = await mediaMessage.downloadMedia(); // Baixa a mídia da mensagem
       console.log(
         `Tamanho do arquivo de mídia: ${media.filesize} bytes (${(
           media.filesize / 1000000
@@ -34,6 +34,7 @@ export async function sendSticker(client, message, senderName) {
       }
 
       if (mediaMessage.type === "image") {
+        // Envia a imagem como sticker
         await client.sendMessage(message.from, media, {
           sendMediaAsSticker: true,
           stickerAuthor: "Anjinho Bot",
@@ -47,7 +48,7 @@ export async function sendSticker(client, message, senderName) {
         const outputWebpPath = "./src/media/output.webp";
 
         try {
-          fs.writeFileSync(videoPath, media.data, "base64");
+          fs.writeFileSync(videoPath, media.data, "base64"); // Salva o vídeo temporariamente
         } catch (err) {
           console.error("Erro ao salvar o vídeo temporariamente:", err);
           return;
@@ -195,11 +196,11 @@ export async function sendImage(client, message) {
   try {
     let figbase = message;
     if (message.hasQuotedMsg) {
-      figbase = await message.getQuotedMessage();
+      figbase = await message.getQuotedMessage(); // Obtém a mensagem citada, se houver
     }
     if (figbase.hasMedia) {
-      const media = await figbase.downloadMedia();
-      await client.sendMessage(message.from, media);
+      const media = await figbase.downloadMedia(); // Baixa a mídia da mensagem
+      await client.sendMessage(message.from, media); // Envia a mídia
     }
   } catch (error) {
     console.error("Error function sendImage:", error);
@@ -209,13 +210,12 @@ export async function sendImage(client, message) {
 export async function sendNSFWImage(client, message, senderName, category) {
   try {
     if (nsfw[category]) {
-
       console.log(`Sending NSFW image ${category} to ${senderName} in ${new Date().toLocaleString()}`);
-      const nsfwImage = await nsfw[category]();
+      const nsfwImage = await nsfw[category](); // Obtém a imagem NSFW da categoria
 
-      const media = await MessageMedia.fromUrl(nsfwImage);
+      const media = await MessageMedia.fromUrl(nsfwImage); // Cria a mídia a partir da URL
 
-      await client.sendMessage(message.from, media);
+      await client.sendMessage(message.from, media); // Envia a mídia
     }
   } catch (error) {
     console.error(error);
@@ -225,13 +225,13 @@ export async function sendNSFWImage(client, message, senderName, category) {
 
 export async function searchRule34(client, message, senderName, category) {
   try {
-    let imageurl = await r34API.rule34(category);
+    let imageurl = await r34API.rule34(category); // Busca a imagem no Rule34
 
-    let urlFormated = imageurl.replace(/"/g, "");
+    let urlFormated = imageurl.replace(/"/g, ""); // Remove aspas da URL
 
-    const media = await MessageMedia.fromUrl(urlFormated);
+    const media = await MessageMedia.fromUrl(urlFormated); // Cria a mídia a partir da URL
 
-    await client.sendMessage(message.from, media);
+    await client.sendMessage(message.from, media); // Envia a mídia
 
     console.log(
       `NSFW image ${category} sent to ${senderName} in ${new Date().toLocaleString()}`
@@ -243,10 +243,10 @@ export async function searchRule34(client, message, senderName, category) {
 }
 
 export async function getCuddleImage() {
-  let responseApi = await HMfull.Nekos.sfw.cuddle();
+  let responseApi = await HMfull.Nekos.sfw.cuddle(); // Obtém a imagem de cuddle
   let CuddleFig = responseApi.url;
 
-  const media = await MessageMedia.fromUrl(CuddleFig);
+  const media = await MessageMedia.fromUrl(CuddleFig); // Cria a mídia a partir da URL
 
   // Verifica se a mídia é um GIF
   if (CuddleFig.endsWith(".gif")) {
@@ -286,8 +286,6 @@ export async function getCuddleImage() {
     fs.unlinkSync(gifPath);
 
     const webpMedia = MessageMedia.fromFilePath(outputWebpPath);
-
-    console.log(webpMedia);
 
     return webpMedia;
   }
