@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { getCuddleImage } from "../services/mediaService.js";
+import { getRandomImage } from "../services/mediaService.js";
 
 export function initializeMessageScheduler(client) {
   const groupId = "120363186217488014@g.us";
@@ -10,7 +10,7 @@ export function initializeMessageScheduler(client) {
       console.log(`Mensagem enviada para o grupo: ${message}`);
 
       // Envio de figurinhas kawaii 
-      const sticker = await getCuddleImage();
+      const sticker = await getRandomImage();
 
       await client.sendMessage(groupId, sticker, {
         sendMediaAsSticker: true,

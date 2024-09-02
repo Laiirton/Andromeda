@@ -164,50 +164,59 @@ export async function searchRule34(client, message, senderName, category) {
   }
 }
 
-// Função para obter e enviar imagem de cuddle
-export async function getCuddleImage() {
-  try {
-    let responseApi = await HMfull.Nekos.sfw.cuddle();
-    let CuddleFig = responseApi.url;
-    const media = await MessageMedia.fromUrl(CuddleFig);
+// Função para obter e enviar imagem de uma categoria aleatória
+export async function getRandomImage() {
+  const categories = [
+    "wave", "wink", "tea", "bonk", "punch", "poke", "bully", "pat", "kiss", "kick", "blush", "feed", "smug", "hug", 
+    "cuddle", "cry", "slap", "five", "glomp", "happy", "hold", "nom", "smile", "throw", "lick", "bite", "dance", 
+    "boop", "sleep", "like", "kill", "nosebleed", "threaten", "tickle", "depression"
+  ];
 
-    // Verifica se a mídia é um GIF e converte para WebP
-    if (CuddleFig.endsWith(".gif")) {
-      const gifPath = "./src/media/temp-cuddle.gif";
-      const outputWebpPath = "./src/media/cuddle-sticker.webp";
+  while (true) {
+    try {
+      const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+      let responseApi = await HMfull.Nekos.sfw[randomCategory]();
+      let imageUrl = responseApi.url;
+      const media = await MessageMedia.fromUrl(imageUrl);
 
-      const gifData = await fetch(CuddleFig).then(res => res.arrayBuffer());
-      fs.writeFileSync(gifPath, Buffer.from(gifData));
+      // Verifica se a mídia é um GIF e converte para WebP
+      if (imageUrl.endsWith(".gif")) {
+        const gifPath = "./src/media/temp-image.gif";
+        const outputWebpPath = "./src/media/image-sticker.webp";
 
-      await new Promise((resolve, reject) => {
-        ffmpeg(gifPath)
-          .outputOptions([
-            "-vcodec", "libwebp",
-            "-vf", "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
-            "-loop", "0",
-            "-preset", "default",
-            "-an",
-            "-vsync", "0",
-            "-s", "240:240",
-            "-quality", "80",
-            "-lossless", "0",
-            "-compression_level", "6",
-            "-q:v", "50",
-            "-pix_fmt", "yuv420p",
-            "-f", "webp"
-          ])
-          .toFormat("webp")
-          .save(outputWebpPath)
-          .on("end", resolve)
-          .on("error", reject);
-      });
+        const gifData = await fetch(imageUrl).then(res => res.arrayBuffer());
+        fs.writeFileSync(gifPath, Buffer.from(gifData));
 
-      fs.unlinkSync(gifPath);
-      return MessageMedia.fromFilePath(outputWebpPath);
+        await new Promise((resolve, reject) => {
+          ffmpeg(gifPath)
+            .outputOptions([
+              "-vcodec", "libwebp",
+              "-vf", "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
+              "-loop", "0",
+              "-preset", "default",
+              "-an",
+              "-vsync", "0",
+              "-s", "240:240",
+              "-quality", "80",
+              "-lossless", "0",
+              "-compression_level", "6",
+              "-q:v", "50",
+              "-pix_fmt", "yuv420p",
+              "-f", "webp"
+            ])
+            .toFormat("webp")
+            .save(outputWebpPath)
+            .on("end", resolve)
+            .on("error", reject);
+        });
+
+        fs.unlinkSync(gifPath);
+        return MessageMedia.fromFilePath(outputWebpPath);
+      }
+
+      return media;
+    } catch (error) {
+      console.error("Erro ao obter imagem, tentando novamente:", error);
     }
-
-    return media;
-  } catch (error) {
-    console.error("Erro ao obter imagem de cuddle:", error);
   }
 }
