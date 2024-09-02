@@ -192,8 +192,6 @@ export async function getRandomImage() {
     "pat",
     "hug",
     "kiss",
-    "cry",
-    "slap",
     "smug",
     "neko",
     "waifu",
