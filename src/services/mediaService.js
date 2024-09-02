@@ -17,7 +17,9 @@ const WEBP_FILE_SIZE = 1000000; // Tamanho máximo permitido para arquivos WebP
 export async function sendSticker(client, message, senderName) {
   try {
     // Verifica se a mensagem é uma citação
-    let mediaMessage = message.hasQuotedMsg ? await message.getQuotedMessage() : message;
+    let mediaMessage = message.hasQuotedMsg
+      ? await message.getQuotedMessage()
+      : message;
 
     // Verifica se a mensagem contém mídia
     if (mediaMessage.hasMedia) {
@@ -27,7 +29,11 @@ export async function sendSticker(client, message, senderName) {
         return;
       }
 
-      console.log(`Tamanho do arquivo de mídia: ${media.filesize} bytes (${(media.filesize / 1000000).toFixed(2)} MB)`);
+      console.log(
+        `Tamanho do arquivo de mídia: ${media.filesize} bytes (${(
+          media.filesize / 1000000
+        ).toFixed(2)} MB)`
+      );
 
       // Verifica o tipo de mídia e processa de acordo
       if (mediaMessage.type === "image") {
@@ -62,11 +68,7 @@ async function processVideoSticker(client, message, media, senderName) {
     // Reduz o tamanho do vídeo
     await new Promise((resolve, reject) => {
       ffmpeg(videoPath)
-        .outputOptions([
-          "-vf", "scale=-2:240",
-          "-b:v", "300k",
-          "-r", "15",
-        ])
+        .outputOptions(["-vf", "scale=-2:240", "-b:v", "300k", "-r", "15"])
         .save(reducedVideoPath)
         .on("end", resolve)
         .on("error", reject);
@@ -76,16 +78,25 @@ async function processVideoSticker(client, message, media, senderName) {
     await new Promise((resolve, reject) => {
       ffmpeg(reducedVideoPath)
         .outputOptions([
-          "-vcodec", "libwebp",
-          "-vf", "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
-          "-loop", "0",
-          "-ss", "00:00:00.0",
-          "-t", "00:00:05.0",
-          "-preset", "default",
+          "-vcodec",
+          "libwebp",
+          "-vf",
+          "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
+          "-loop",
+          "0",
+          "-ss",
+          "00:00:00.0",
+          "-t",
+          "00:00:05.0",
+          "-preset",
+          "default",
           "-an",
-          "-vsync", "0",
-          "-s", "240:240",
-          "-quality", "80",
+          "-vsync",
+          "0",
+          "-s",
+          "240:240",
+          "-quality",
+          "80",
         ])
         .toFormat("webp")
         .save(outputWebpPath)
@@ -98,7 +109,10 @@ async function processVideoSticker(client, message, media, senderName) {
       const webpSticker = MessageMedia.fromFilePath(outputWebpPath);
       if (fs.statSync(outputWebpPath).size > WEBP_FILE_SIZE) {
         console.error("Erro: O arquivo WebP final é muito grande");
-        await client.sendMessage(message.from, "O arquivo de mídia é muito grande para ser processado.");
+        await client.sendMessage(
+          message.from,
+          "O arquivo de mídia é muito grande para ser processado."
+        );
         return;
       }
 
@@ -108,7 +122,9 @@ async function processVideoSticker(client, message, media, senderName) {
         stickerName: `Created by ${senderName}`,
       });
       await client.sendMessage(message.from, "Here is your video sticker 😈");
-      console.log(`Sticker de vídeo enviado para ${senderName} em ${new Date().toLocaleString()}`);
+      console.log(
+        `Sticker de vídeo enviado para ${senderName} em ${new Date().toLocaleString()}`
+      );
     } else {
       console.error("Erro: O arquivo de saída webp não foi criado");
     }
@@ -116,7 +132,7 @@ async function processVideoSticker(client, message, media, senderName) {
     console.error("Erro ao processar o vídeo:", error);
   } finally {
     // Limpa arquivos temporários
-    [videoPath, reducedVideoPath, outputWebpPath].forEach(path => {
+    [videoPath, reducedVideoPath, outputWebpPath].forEach((path) => {
       if (fs.existsSync(path)) fs.unlinkSync(path);
     });
   }
@@ -125,7 +141,9 @@ async function processVideoSticker(client, message, media, senderName) {
 // Função para enviar imagem
 export async function sendImage(client, message) {
   try {
-    let figbase = message.hasQuotedMsg ? await message.getQuotedMessage() : message;
+    let figbase = message.hasQuotedMsg
+      ? await message.getQuotedMessage()
+      : message;
     if (figbase.hasMedia) {
       const media = await figbase.downloadMedia();
       await client.sendMessage(message.from, media);
@@ -139,7 +157,9 @@ export async function sendImage(client, message) {
 export async function sendNSFWImage(client, message, senderName, category) {
   try {
     if (nsfw[category]) {
-      console.log(`Sending NSFW image ${category} to ${senderName} in ${new Date().toLocaleString()}`);
+      console.log(
+        `Sending NSFW image ${category} to ${senderName} in ${new Date().toLocaleString()}`
+      );
       const nsfwImage = await nsfw[category]();
       const media = await MessageMedia.fromUrl(nsfwImage);
       await client.sendMessage(message.from, media);
@@ -157,7 +177,9 @@ export async function searchRule34(client, message, senderName, category) {
     let urlFormated = imageurl.replace(/"/g, "");
     const media = await MessageMedia.fromUrl(urlFormated);
     await client.sendMessage(message.from, media);
-    console.log(`NSFW image ${category} sent to ${senderName} in ${new Date().toLocaleString()}`);
+    console.log(
+      `NSFW image ${category} sent to ${senderName} in ${new Date().toLocaleString()}`
+    );
   } catch (error) {
     console.error(error);
     message.reply("Image not found.🥺");
@@ -167,14 +189,32 @@ export async function searchRule34(client, message, senderName, category) {
 // Função para obter e enviar imagem de uma categoria aleatória
 export async function getRandomImage() {
   const categories = [
-    "wave", "wink", "tea", "bonk", "punch", "poke", "bully", "pat", "kiss", "kick", "blush", "feed", "smug", "hug", 
-    "cuddle", "cry", "slap", "five", "glomp", "happy", "hold", "nom", "smile", "throw", "lick", "bite", "dance", 
-    "boop", "sleep", "like", "kill", "nosebleed", "threaten", "tickle", "depression"
+    "pat",
+    "hug",
+    "kiss",
+    "cry",
+    "slap",
+    "smug",
+    "neko",
+    "waifu",
+    "cuddle",
+    "feed",
+    "foxgirl",
   ];
 
   while (true) {
     try {
-      const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+      const randomCategory =
+        categories[Math.floor(Math.random() * categories.length)];
+
+      // Verifica se a função existe
+      if (typeof HMfull.Nekos.sfw[randomCategory] !== "function") {
+        console.error(
+          `Função para a categoria ${randomCategory} não encontrada, tentando novamente...`
+        );
+        continue;
+      }
+
       let responseApi = await HMfull.Nekos.sfw[randomCategory]();
       let imageUrl = responseApi.url;
       const media = await MessageMedia.fromUrl(imageUrl);
@@ -184,25 +224,37 @@ export async function getRandomImage() {
         const gifPath = "./src/media/temp-image.gif";
         const outputWebpPath = "./src/media/image-sticker.webp";
 
-        const gifData = await fetch(imageUrl).then(res => res.arrayBuffer());
+        const gifData = await fetch(imageUrl).then((res) => res.arrayBuffer());
         fs.writeFileSync(gifPath, Buffer.from(gifData));
 
         await new Promise((resolve, reject) => {
           ffmpeg(gifPath)
             .outputOptions([
-              "-vcodec", "libwebp",
-              "-vf", "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
-              "-loop", "0",
-              "-preset", "default",
+              "-vcodec",
+              "libwebp",
+              "-vf",
+              "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
+              "-loop",
+              "0",
+              "-preset",
+              "default",
               "-an",
-              "-vsync", "0",
-              "-s", "240:240",
-              "-quality", "80",
-              "-lossless", "0",
-              "-compression_level", "6",
-              "-q:v", "50",
-              "-pix_fmt", "yuv420p",
-              "-f", "webp"
+              "-vsync",
+              "0",
+              "-s",
+              "240:240",
+              "-quality",
+              "80",
+              "-lossless",
+              "0",
+              "-compression_level",
+              "6",
+              "-q:v",
+              "50",
+              "-pix_fmt",
+              "yuv420p",
+              "-f",
+              "webp",
             ])
             .toFormat("webp")
             .save(outputWebpPath)
