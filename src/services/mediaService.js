@@ -6,6 +6,9 @@ import fs from "fs";
 import club from "club-atticus";
 import r34API from "0000000r34api";
 import HMfull from "hmfull";
+import dotenv from "dotenv";
+dotenv.config();
+import { GiphyFetch } from "@giphy/js-fetch-api";
 
 // Inicializa o módulo NSFW
 const nsfw = new club();
@@ -268,5 +271,62 @@ export async function getRandomImage() {
     } catch (error) {
       console.error("Erro ao obter imagem, tentando novamente:", error);
     }
+  }
+}
+
+export async function getRandomGif() {
+  const gf = new GiphyFetch(process.env.GIPHY_API_KEY);
+  const { data } = await gf.random({ tag: "cat" });
+
+  let imageUrl = data.images.original.url;
+
+  // Verifica se a mídia é um GIF e converte para WebP
+  if (imageUrl) {
+    const gifPath = "./src/media/temp-image.gif";
+    const outputWebpPath = "./src/media/image-sticker.webp";
+
+    const gifData = await fetch(imageUrl).then((res) => res.arrayBuffer());
+    fs.writeFileSync(gifPath, Buffer.from(gifData));
+
+    await new Promise((resolve, reject) => {
+      ffmpeg(gifPath)
+        .outputOptions([
+          "-vcodec",
+          "libwebp",
+          "-vf",
+          "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
+          "-loop",
+          "0",
+          "-preset",
+          "default",
+          "-an",
+          "-vsync",
+          "0",
+          "-s",
+          "240:240",
+          "-quality",
+          "80",
+          "-lossless",
+          "0",
+          "-compression_level",
+          "6",
+          "-q:v",
+          "50",
+          "-pix_fmt",
+          "yuv420p",
+          "-f",
+          "webp",
+        ])
+        .toFormat("webp")
+        .save(outputWebpPath)
+        .on("end", resolve)
+        .on("error", reject);
+    });
+
+    fs.unlinkSync(gifPath);
+    return MessageMedia.fromFilePath(outputWebpPath);
+  } else {
+    // Se não for um GIF, retorne a URL diretamente
+    return imageUrl;
   }
 }
