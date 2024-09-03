@@ -99,7 +99,7 @@ async function processVideoSticker(client, message, media, senderName) {
           "-s",
           "240:240",
           "-quality",
-          "80",
+          "100",
         ])
         .toFormat("webp")
         .save(outputWebpPath)
@@ -245,7 +245,7 @@ export async function getRandomImage() {
               "-s",
               "240:240",
               "-quality",
-              "80",
+              "100",
               "-lossless",
               "0",
               "-compression_level",
@@ -305,7 +305,7 @@ export async function getRandomGif() {
           "-s",
           "240:240",
           "-quality",
-          "80",
+          "100",
           "-lossless",
           "0",
           "-compression_level",
