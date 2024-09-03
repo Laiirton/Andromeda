@@ -324,6 +324,9 @@ export async function getRandomGif() {
     });
 
     fs.unlinkSync(gifPath);
+
+    console.log("Url do GIF:", imageUrl);
+    
     return MessageMedia.fromFilePath(outputWebpPath);
   } else {
     // Se não for um GIF, retorne a URL diretamente
