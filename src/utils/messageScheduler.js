@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { getRandomImage } from "../services/mediaService.js";
+import { getRandomGif, getRandomImage } from "../services/mediaService.js";
 
 export function initializeMessageScheduler(client) {
   const groupId = "120363186217488014@g.us";
@@ -10,9 +10,9 @@ export function initializeMessageScheduler(client) {
       console.log(`Mensagem enviada para o grupo: ${message}`);
 
       // Envio de figurinhas kawaii 
-      const sticker = await getRandomImage();
+      const stickerMedia = await getRandomGif();
 
-      await client.sendMessage(groupId, sticker, {
+      await client.sendMessage(groupId, stickerMedia, {
         sendMediaAsSticker: true,
         stickerAuthor: "Anjinho Bot",
         stickerName: `Created by 😈`,
