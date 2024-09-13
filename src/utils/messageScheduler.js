@@ -10,7 +10,7 @@ export function initializeMessageScheduler(client) {
       console.log(`Mensagem enviada para o grupo: ${message}`);
 
       // Envio de figurinhas kawaii 
-      const stickerMedia = await getRandomGif();
+      const stickerMedia = await getRandomImage();
 
       await client.sendMessage(groupId, stickerMedia, {
         sendMediaAsSticker: true,
