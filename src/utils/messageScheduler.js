@@ -9,14 +9,14 @@ export function initializeMessageScheduler(client) {
       await client.sendMessage(groupId, message);
       console.log(`Mensagem enviada para o grupo: ${message}`);
 
-      // Envio de figurinhas kawaii 
-      const stickerMedia = await getRandomImage();
+      // // Envio de figurinhas kawaii 
+      // const stickerMedia = await getRandomImage();
 
-      await client.sendMessage(groupId, stickerMedia, {
-        sendMediaAsSticker: true,
-        stickerAuthor: "Anjinho Bot",
-        stickerName: `Created by 😈`,
-      });
+      // await client.sendMessage(groupId, stickerMedia, {
+      //   sendMediaAsSticker: true,
+      //   stickerAuthor: "Anjinho Bot",
+      //   stickerName: `Created by 😈`,
+      // });
     } catch (error) {
       console.error(`Erro ao enviar mensagem para o grupo: ${error.message}`);
     }
