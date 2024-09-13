@@ -189,7 +189,7 @@ export async function searchRule34(client, message, senderName, category) {
   }
 }
 
-// Função para obter e enviar imagem de uma categoria aleatória
+// Função para obter e enviar um GIF aleatório
 export async function getRandomImage() {
   const categories = [
     "pat",
@@ -208,68 +208,66 @@ export async function getRandomImage() {
       const randomCategory =
         categories[Math.floor(Math.random() * categories.length)];
 
-      // Verifica se a função existe
-      if (typeof HMfull.Nekos.sfw[randomCategory] !== "function") {
+      // Verifica se a função existe e se retorna um GIF
+      if (
+        typeof HMfull.Nekos.sfw[randomCategory] !== "function" ||
+        !HMfull.Nekos.sfw[randomCategory].isGif
+      ) {
         console.error(
-          `Função para a categoria ${randomCategory} não encontrada, tentando novamente...`
+          `Função para a categoria ${randomCategory} não encontrada ou não retorna um GIF, tentando novamente...`
         );
         continue;
       }
 
       let responseApi = await HMfull.Nekos.sfw[randomCategory]();
       let imageUrl = responseApi.url;
-      const media = await MessageMedia.fromUrl(imageUrl);
 
-      // Verifica se a mídia é um GIF e converte para WebP
-      if (imageUrl.endsWith(".gif")) {
-        const gifPath = "./src/media/temp-image.gif";
-        const outputWebpPath = "./src/media/image-sticker.webp";
+      // Converte o GIF para WebP
+      const gifPath = "./src/media/temp-image.gif";
+      const outputWebpPath = "./src/media/image-sticker.webp";
 
-        const gifData = await fetch(imageUrl).then((res) => res.arrayBuffer());
-        fs.writeFileSync(gifPath, Buffer.from(gifData));
+      const gifData = await fetch(imageUrl).then((res) => res.arrayBuffer());
+      fs.writeFileSync(gifPath, Buffer.from(gifData));
 
-        await new Promise((resolve, reject) => {
-          ffmpeg(gifPath)
-            .outputOptions([
-              "-vcodec",
-              "libwebp",
-              "-vf",
-              "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
-              "-loop",
-              "0",
-              "-preset",
-              "default",
-              "-an",
-              "-vsync",
-              "0",
-              "-s",
-              "240:240",
-              "-quality",
-              "100",
-              "-lossless",
-              "0",
-              "-compression_level",
-              "6",
-              "-q:v",
-              "50",
-              "-pix_fmt",
-              "yuv420p",
-              "-f",
-              "webp",
-            ])
-            .toFormat("webp")
-            .save(outputWebpPath)
-            .on("end", resolve)
-            .on("error", reject);
-        });
+      await new Promise((resolve, reject) => {
+        ffmpeg(gifPath)
+          .outputOptions([
+            "-vcodec",
+            "libwebp",
+            "-vf",
+            "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
+            "-loop",
+            "0",
+            "-preset",
+            "default",
+            "-an",
+            "-vsync",
+            "0",
+            "-s",
+            "240:240",
+            "-quality",
+            "100",
+            "-lossless",
+            "0",
+            "-compression_level",
+            "6",
+            "-q:v",
+            "50",
+            "-pix_fmt",
+            "yuv420p",
+            "-f",
+            "webp",
+          ])
+          .toFormat("webp")
+          .save(outputWebpPath)
+          .on("end", resolve)
+          .on("error", reject);
+      });
 
-        fs.unlinkSync(gifPath);
-        return MessageMedia.fromFilePath(outputWebpPath);
-      }
-
-      return media;
+      fs.unlinkSync(gifPath);
+      return MessageMedia.fromFilePath(outputWebpPath);
     } catch (error) {
-      console.error("Erro ao obter imagem, tentando novamente:", error);
+      console.error("Erro ao obter GIF, tentando novamente:", error);
     }
   }
 }
@@ -326,7 +324,7 @@ export async function getRandomGif() {
     fs.unlinkSync(gifPath);
 
     console.log("Url do GIF:", imageUrl);
-    
+
     return MessageMedia.fromFilePath(outputWebpPath);
   } else {
     // Se não for um GIF, retorne a URL diretamente
