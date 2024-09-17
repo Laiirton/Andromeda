@@ -5,23 +5,13 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-export async function whisperTranscription(audioBuffer) {
-  // Ensure audioBuffer is a Buffer
-  if (!(audioBuffer instanceof Buffer)) {
-    throw new Error("audioBuffer must be a Buffer");
-  }
+const MAX_FILE_SIZE = 24 * 1024 * 1024; // 24MB in bytes
 
-  // Create a temporary file
-  const tempFile = path.join(os.tmpdir(), `audio-${Date.now()}.mp3`);
-  
+async function processAudioChunk(chunk, index) {
+  const tempFile = path.join(os.tmpdir(), `audio-chunk-${index}-${Date.now()}.mp3`);
   try {
-    // Write the buffer to the temporary file
-    fs.writeFileSync(tempFile, audioBuffer);
-
-    // Check if the file was created and has content
-    const stats = fs.statSync(tempFile);
-    console.log(`Transcription Process Initialized`)
-    console.log(`Temporary file created: ${tempFile}, size: ${stats.size} bytes`);
+    fs.writeFileSync(tempFile, chunk);
+    console.log(`Processing chunk ${index}, size: ${chunk.length} bytes`);
 
     const transcription = await groq.audio.transcriptions.create({
       file: fs.createReadStream(tempFile),
@@ -31,18 +21,41 @@ export async function whisperTranscription(audioBuffer) {
       temperature: 0,
     });
 
-    const response = transcription.text;
-  
-    console.log(`Transcription Process Initialized`)
-    return transcription, response;
+    return transcription.text;
+  } finally {
+    if (fs.existsSync(tempFile)) {
+      fs.unlinkSync(tempFile);
+    }
+  }
+}
+
+export async function whisperTranscription(audioBuffer) {
+  if (!(audioBuffer instanceof Buffer)) {
+    throw new Error("audioBuffer must be a Buffer");
+  }
+
+  console.log(`Transcription Process Initialized`);
+
+  try {
+    if (audioBuffer.length <= MAX_FILE_SIZE) {
+      // Process as a single chunk if file size is within limit
+      return await processAudioChunk(audioBuffer, 0);
+    } else {
+      // Split the file into chunks and process each
+      const chunks = [];
+      for (let i = 0; i < audioBuffer.length; i += MAX_FILE_SIZE) {
+        chunks.push(audioBuffer.slice(i, i + MAX_FILE_SIZE));
+      }
+
+      const results = await Promise.all(chunks.map((chunk, index) => 
+        processAudioChunk(chunk, index)
+      ));
+
+      // Combine results from all chunks
+      return results.join(' ');
+    }
   } catch (error) {
     console.error("Error in transcription:", error);
     throw error;
-  } finally {
-    // Remove the temporary file
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-      console.log("Temporary file removed");
-    }
   }
 }
