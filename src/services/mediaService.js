@@ -7,137 +7,93 @@ import club from "club-atticus";
 import r34API from "0000000r34api";
 import HMfull from "hmfull";
 import dotenv from "dotenv";
-dotenv.config();
-import { GiphyFetch } from "@giphy/js-fetch-api";
+import { promisify } from "util";
 
-// Inicializa o módulo NSFW
+dotenv.config();
 const nsfw = new club();
 
-// Constantes
-const WEBP_FILE_SIZE = 1000000; // Tamanho máximo permitido para arquivos WebP
 
-// Função para enviar sticker
-export async function sendSticker(client, message, senderName) {
-  try {
-    // Verifica se a mensagem é uma citação
-    let mediaMessage = message.hasQuotedMsg
-      ? await message.getQuotedMessage()
-      : message;
+const MAX_WEBP_SIZE = 500 * 1024; // 500KB
+const MAX_VIDEO_DURATION = 5; // 5 segundos
 
-    // Verifica se a mensagem contém mídia
-    if (mediaMessage.hasMedia) {
-      const media = await mediaMessage.downloadMedia();
-      if (!media) {
-        console.error("Erro ao baixar a mídia");
-        return;
-      }
+const writeFileAsync = promisify(fs.writeFile);
+const unlinkAsync = promisify(fs.unlink);
+const statAsync = promisify(fs.stat);
 
-      console.log(
-        `Tamanho do arquivo de mídia: ${media.filesize} bytes (${(
-          media.filesize / 1000000
-        ).toFixed(2)} MB)`
-      );
-
-      // Verifica o tipo de mídia e processa de acordo
-      if (mediaMessage.type === "image") {
-        // Envia imagem como sticker
-        await client.sendMessage(message.from, media, {
-          sendMediaAsSticker: true,
-          stickerAuthor: "Anjinho Bot",
-          stickerName: `Created by ${senderName}`,
-        });
-        await client.sendMessage(message.from, "Here is your image sticker 😈");
-        console.log(`Sticker enviado para ${senderName}`);
-      } else if (mediaMessage.type === "video") {
-        // Processa vídeo para enviar como sticker
-        await processVideoSticker(client, message, media, senderName);
-      }
-    }
-  } catch (error) {
-    console.error("Erro:", error);
-  }
+async function compressWebp(inputPath, outputPath, quality = 80) {
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .outputOptions([
+        "-vcodec", "libwebp",
+        "-vf", "scale=240:240:force_original_aspect_ratio=decrease,format=rgba,pad=240:240:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
+        "-loop", "0",
+        "-preset", "default",
+        "-an",
+        "-vsync", "0",
+        "-t", `${MAX_VIDEO_DURATION}`,
+        "-quality", quality,
+        "-compression_level", "6",
+        "-q:v", "50",
+        "-pix_fmt", "yuva420p",
+      ])
+      .toFormat("webp")
+      .save(outputPath)
+      .on("end", resolve)
+      .on("error", reject);
+  });
 }
 
-// Função auxiliar para processar vídeo e enviar como sticker
-async function processVideoSticker(client, message, media, senderName) {
-  const videoPath = "./src/media/temp-video.mp4";
-  const reducedVideoPath = "./src/media/reduced-video.mp4";
-  const outputWebpPath = "./src/media/output.webp";
+async function ensureWebpSize(inputPath, outputPath) {
+  let quality = 80;
+  while (quality > 0) {
+    await compressWebp(inputPath, outputPath, quality);
+    const stats = await statAsync(outputPath);
+    if (stats.size <= MAX_WEBP_SIZE) break;
+    quality -= 10;
+  }
+  if (quality <= 0) throw new Error("Não foi possível comprimir o arquivo para o tamanho desejado");
+}
 
+export async function sendSticker(client, message, senderName) {
   try {
-    // Salva o vídeo temporariamente
-    fs.writeFileSync(videoPath, media.data, "base64");
+    const mediaMessage = message.hasQuotedMsg ? await message.getQuotedMessage() : message;
+    if (!mediaMessage.hasMedia) return;
 
-    // Reduz o tamanho do vídeo
-    await new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
-        .outputOptions(["-vf", "scale=-2:240", "-b:v", "300k", "-r", "15"])
-        .save(reducedVideoPath)
-        .on("end", resolve)
-        .on("error", reject);
-    });
+    const media = await mediaMessage.downloadMedia();
+    if (!media) throw new Error("Erro ao baixar a mídia");
 
-    // Converte o vídeo reduzido para WebP
-    await new Promise((resolve, reject) => {
-      ffmpeg(reducedVideoPath)
-        .outputOptions([
-          "-vcodec",
-          "libwebp",
-          "-vf",
-          "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
-          "-loop",
-          "0",
-          "-ss",
-          "00:00:00.0",
-          "-t",
-          "00:00:05.0",
-          "-preset",
-          "default",
-          "-an",
-          "-vsync",
-          "0",
-          "-s",
-          "240:240",
-          "-quality",
-          "100",
-        ])
-        .toFormat("webp")
-        .save(outputWebpPath)
-        .on("end", resolve)
-        .on("error", reject);
-    });
+    const tempPath = `./temp_${Date.now()}`;
+    const outputPath = `${tempPath}.webp`;
 
-    // Verifica se o arquivo WebP foi criado e envia como sticker
-    if (fs.existsSync(outputWebpPath)) {
-      const webpSticker = MessageMedia.fromFilePath(outputWebpPath);
-      if (fs.statSync(outputWebpPath).size > WEBP_FILE_SIZE) {
-        console.error("Erro: O arquivo WebP final é muito grande");
-        await client.sendMessage(
-          message.from,
-          "O arquivo de mídia é muito grande para ser processado."
-        );
-        return;
-      }
+    await writeFileAsync(tempPath, media.data, "base64");
 
-      await client.sendMessage(message.from, webpSticker, {
-        sendMediaAsSticker: true,
-        stickerAuthor: "Anjinho Bot",
-        stickerName: `Created by ${senderName}`,
+    if (mediaMessage.type === "image") {
+      await ensureWebpSize(tempPath, outputPath);
+    } else if (mediaMessage.type === "video") {
+      await new Promise((resolve, reject) => {
+        ffmpeg(tempPath)
+          .outputOptions(["-t", `${MAX_VIDEO_DURATION}`, "-vf", "scale=240:-1"])
+          .save(`${tempPath}_reduced.mp4`)
+          .on("end", resolve)
+          .on("error", reject);
       });
-      await client.sendMessage(message.from, "Here is your video sticker 😈");
-      console.log(
-        `Sticker de vídeo enviado para ${senderName} em ${new Date().toLocaleString()}`
-      );
-    } else {
-      console.error("Erro: O arquivo de saída webp não foi criado");
+      await ensureWebpSize(`${tempPath}_reduced.mp4`, outputPath);
+      await unlinkAsync(`${tempPath}_reduced.mp4`);
     }
-  } catch (error) {
-    console.error("Erro ao processar o vídeo:", error);
-  } finally {
-    // Limpa arquivos temporários
-    [videoPath, reducedVideoPath, outputWebpPath].forEach((path) => {
-      if (fs.existsSync(path)) fs.unlinkSync(path);
+
+    const webpSticker = MessageMedia.fromFilePath(outputPath);
+    await client.sendMessage(message.from, webpSticker, {
+      sendMediaAsSticker: true,
+      stickerAuthor: "Anjinho Bot",
+      stickerName: `Created by ${senderName}`,
     });
+
+    await unlinkAsync(tempPath);
+    await unlinkAsync(outputPath);
+
+    console.log(`Sticker enviado para ${senderName} em ${new Date().toLocaleString()}`);
+  } catch (error) {
+    console.error("Erro ao processar sticker:", error);
   }
 }
 
