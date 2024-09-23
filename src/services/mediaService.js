@@ -12,7 +12,6 @@ import { promisify } from "util";
 dotenv.config();
 const nsfw = new club();
 
-
 const MAX_WEBP_SIZE = 500 * 1024; // 500KB
 const MAX_VIDEO_DURATION = 5; // 5 segundos
 
