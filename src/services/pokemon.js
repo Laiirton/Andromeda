@@ -7,6 +7,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const CAPTURE_LIMIT = 5;
+const COOLDOWN_PERIOD = 60 * 60 * 1000; // 1 hora em milissegundos
+
 async function savePokemonToSupabase(userId, pokemonName, pokemonImage) {
   try {
     const { data, error } = await supabase
@@ -81,31 +84,105 @@ async function getPokemonFromDatabase(userId) {
   }
 }
 
+async function getUserCaptureInfo(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('user_capture_info')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Erro ao buscar informações de captura:', error);
+      return null;
+    }
+
+    if (!data) {
+      const { data: newData, error: insertError } = await supabase
+        .from('user_capture_info')
+        .insert({ user_id: userId, capture_count: 0, last_capture_time: new Date().toISOString() })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Erro ao criar informações de captura:', insertError);
+        return null;
+      }
+
+      return newData;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Erro inesperado ao obter informações de captura:', error);
+    return null;
+  }
+}
+
+async function updateUserCaptureInfo(userId, captureCount, lastCaptureTime) {
+  try {
+    const { error } = await supabase
+      .from('user_capture_info')
+      .update({ capture_count: captureCount, last_capture_time: lastCaptureTime })
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Erro ao atualizar informações de captura:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Erro inesperado ao atualizar informações de captura:', error);
+    return false;
+  }
+}
+
 export async function getRandomPokemonNameAndImage(senderName) {
   try {
     const userId = await getOrCreateUser(senderName);
     if (!userId) {
       console.error('Não foi possível criar ou obter o usuário');
-      return null;
+      return { error: 'Erro ao obter usuário' };
+    }
+
+    const captureInfo = await getUserCaptureInfo(userId);
+    if (!captureInfo) {
+      return { error: 'Erro ao obter informações de captura' };
+    }
+
+    const currentTime = new Date();
+    const lastCaptureTime = new Date(captureInfo.last_capture_time);
+    const timeSinceLastCapture = currentTime - lastCaptureTime;
+
+    if (timeSinceLastCapture < COOLDOWN_PERIOD && captureInfo.capture_count >= CAPTURE_LIMIT) {
+      const remainingTime = Math.ceil((COOLDOWN_PERIOD - timeSinceLastCapture) / 60000); // Tempo restante em minutos
+      return { error: `Você atingiu o limite de capturas. Tente novamente em ${remainingTime} minutos.` };
+    }
+
+    if (timeSinceLastCapture >= COOLDOWN_PERIOD) {
+      captureInfo.capture_count = 0;
     }
 
     const randomId = Math.floor(Math.random() * 898) + 1;
     const randomPokemon = await getPokemon(randomId);
     const name = randomPokemon.name;
     const imageUrl = randomPokemon.image.default;
-    console.log(`Novo Pokémon gerado: ${name}`);
 
     const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl);
-    if (savedPokemon) {
-      console.log('Pokémon salvo com sucesso no banco de dados');
-    } else {
-      console.error('Falha ao salvar o Pokémon no banco de dados');
+    if (!savedPokemon) {
+      return { error: 'Falha ao salvar o Pokémon no banco de dados' };
     }
 
-    return { name, imageUrl };
+    captureInfo.capture_count += 1;
+    captureInfo.last_capture_time = currentTime.toISOString();
+    await updateUserCaptureInfo(userId, captureInfo.capture_count, captureInfo.last_capture_time);
+
+    console.log(`Novo Pokémon capturado: ${name}. Capturas restantes: ${CAPTURE_LIMIT - captureInfo.capture_count}`);
+    return { name, imageUrl, capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count };
   } catch (error) {
     console.error('Erro inesperado ao obter Pokémon:', error);
-    return null;
+    return { error: 'Erro inesperado ao obter Pokémon' };
   }
 }
 
