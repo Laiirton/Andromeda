@@ -6,7 +6,7 @@ Se você tentar pedir algo que seja considerado contra os direitos humanos ele n
 *!pokemon*: 'Capture um pokemon aleatório e adicione ele no seu pokedex.'
 *!pokedex*: 'Veja seu pokedex com todos os pokemons que você já capturou.'
 *!transcribe*: 'Use esse comando em um audio para transcrever o audio em texto.'
-*!r34*: 'Para buscar imagens no site rule34.xxx. Exemplo: !r34 naruto'
+*!r34*: 'Busca uma imagem R34 aleatória ou com a tag especificada.'
 *!nsfw*: 'Para exibir os comandos NSFW.'
 *!img*: 'Envia a imagem original de uma figurinha. Responda a uma figurinha com este comando.'
 *!delete*: 'Para pedir que ele delete a mensagem enviada.'
