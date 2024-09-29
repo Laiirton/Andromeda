@@ -15,7 +15,7 @@ import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
 import {
   getRandomPokemonNameAndImage,
-  getUserPokemon,
+  getUserPokemon
 } from "../services/pokemon.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
@@ -124,47 +124,38 @@ async function handleCommand(client, message, command) {
         if (pokemon) {
           const media = await MessageMedia.fromUrl(pokemon.imageUrl);
           await client.sendMessage(message.from, media, {
-            caption: `Parabéns, você capturou: ${pokemon.name}`,
+            caption: `Parabéns, ${senderName}! Você capturou um ${pokemon.name}!`,
           });
         } else {
           message.reply(
-            "Desculpe, ocorreu um erro ao buscar o Pokémon aleatório."
+            "Desculpe, ocorreu um erro ao buscar o Pokémon. Tente novamente mais tarde."
           );
         }
       } catch (error) {
         console.error("Erro ao obter Pokémon aleatório:", error);
         message.reply(
-          "Desculpe, ocorreu um erro ao buscar o Pokémon aleatório."
+          "Desculpe, ocorreu um erro inesperado. Tente novamente mais tarde."
         );
       }
       break;
 
     case "pokedex":
       try {
-        const pokedex = await getUserPokemon(senderName); // Adicionado 'await' aqui
-        let pokemonList;
-
-        if (typeof pokedex === "string") {
-          // Se for uma string, vamos converter para array
-          pokemonList = pokedex.replace(/[\[\]']/g, "").split(", ");
-        } else if (Array.isArray(pokedex)) {
-          // Se já for um array, usamos diretamente
-          pokemonList = pokedex;
+        const pokemonList = await getUserPokemon(senderName);
+        if (pokemonList.length > 0) {
+          const formattedPokedex = pokemonList
+            .map((pokemon, index) => `${index + 1}. ${pokemon}`)
+            .join("\n");
+          const responseMessage = `Sua Pokédex:\n${formattedPokedex}`;
+          await client.sendMessage(message.from, responseMessage);
         } else {
-          throw new Error("Formato de Pokédex inválido");
+          await client.sendMessage(message.from, "Você ainda não capturou nenhum Pokémon ou ocorreu um erro ao buscar sua Pokédex.");
         }
-
-        const sortedPokedex = pokemonList.sort();
-        const formattedPokedex = sortedPokedex
-          .map((pokemon, index) => `${index + 1}. ${pokemon}`)
-          .join("\n");
-        const responseMessage = `Sua Pokédex:\n${formattedPokedex}`;
-        await client.sendMessage(message.from, responseMessage);
       } catch (error) {
         console.error("Erro ao enviar Pokédex:", error);
         await client.sendMessage(
           message.from,
-          "Desculpe, ocorreu um erro ao buscar sua Pokédex."
+          "Desculpe, ocorreu um erro ao buscar sua Pokédex. Tente novamente mais tarde."
         );
       }
       break;
