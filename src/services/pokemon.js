@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createCanvas, loadImage } from 'canvas';
 import axios from 'axios';
 
-// Conexão com o supabase
+// Configuração do Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -11,23 +11,21 @@ const supabase = createClient(
 
 const CAPTURE_LIMIT = 5;
 const COOLDOWN_PERIOD = 60 * 60 * 1000; // 1 hora em milissegundos
+const MAX_POKEMON_ID = 898;
+const MAX_FETCH_ATTEMPTS = 5;
 
 async function savePokemonToSupabase(userId, pokemonName, pokemonImage) {
   try {
     const { data, error } = await supabase
       .from('pokemon_generated')
-      .insert([
-        { user_id: userId, pokemon_name: pokemonName, pokemon_image_url: pokemonImage }
-      ]);
+      .insert([{ user_id: userId, pokemon_name: pokemonName, pokemon_image_url: pokemonImage }]);
     
-    if (error) {
-      console.error('Erro ao salvar Pokémon:', error);
-      return null;
-    }
+    if (error) throw error;
+    
     console.log('Pokémon salvo com sucesso:', { userId, pokemonName, pokemonImage });
     return { userId, pokemonName, pokemonImage };
   } catch (error) {
-    console.error('Erro inesperado ao salvar Pokémon:', error);
+    console.error('Erro ao salvar Pokémon:', error);
     return null;
   }
 }
@@ -40,10 +38,7 @@ async function getOrCreateUser(username) {
       .eq('username', username)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Erro ao buscar usuário:', error);
-      return null;
-    }
+    if (error && error.code !== 'PGRST116') throw error;
 
     if (!user) {
       const { data: newUser, error: insertError } = await supabase
@@ -52,36 +47,13 @@ async function getOrCreateUser(username) {
         .select('id')
         .single();
 
-      if (insertError) {
-        console.error('Erro ao criar novo usuário:', insertError);
-        return null;
-      }
+      if (insertError) throw insertError;
       user = newUser;
     }
 
     return user.id;
   } catch (error) {
-    console.error('Erro inesperado ao obter ou criar usuário:', error);
-    return null;
-  }
-}
-
-async function getPokemonFromDatabase(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('pokemon_generated')
-      .select('pokemon_name, pokemon_image_url')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (error) {
-      console.error('Erro ao buscar Pokémon do banco de dados:', error);
-      return null;
-    }
-    return data.length > 0 ? data[0] : null;
-  } catch (error) {
-    console.error('Erro inesperado ao buscar Pokémon do banco de dados:', error);
+    console.error('Erro ao obter ou criar usuário:', error);
     return null;
   }
 }
@@ -94,10 +66,7 @@ async function getUserCaptureInfo(userId) {
       .eq('user_id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Erro ao buscar informações de captura:', error);
-      return null;
-    }
+    if (error && error.code !== 'PGRST116') throw error;
 
     if (!data) {
       const { data: newData, error: insertError } = await supabase
@@ -106,17 +75,13 @@ async function getUserCaptureInfo(userId) {
         .select()
         .single();
 
-      if (insertError) {
-        console.error('Erro ao criar informações de captura:', insertError);
-        return null;
-      }
-
+      if (insertError) throw insertError;
       return newData;
     }
 
     return data;
   } catch (error) {
-    console.error('Erro inesperado ao obter informações de captura:', error);
+    console.error('Erro ao obter informações de captura:', error);
     return null;
   }
 }
@@ -128,14 +93,10 @@ async function updateUserCaptureInfo(userId, captureCount, lastCaptureTime) {
       .update({ capture_count: captureCount, last_capture_time: lastCaptureTime })
       .eq('user_id', userId);
 
-    if (error) {
-      console.error('Erro ao atualizar informações de captura:', error);
-      return false;
-    }
-
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Erro inesperado ao atualizar informações de captura:', error);
+    console.error('Erro ao atualizar informações de captura:', error);
     return false;
   }
 }
@@ -148,7 +109,7 @@ async function fetchPokemonFromPokeAPI(id) {
       image: response.data.sprites.other['official-artwork'].front_default || response.data.sprites.front_default
     };
   } catch (error) {
-    console.error(`Erro ao buscar Pokémon da PokeAPI: ${error}`);
+    console.error(`Erro ao buscar Pokémon da PokeAPI:`, error);
     return null;
   }
 }
@@ -156,22 +117,17 @@ async function fetchPokemonFromPokeAPI(id) {
 export async function getRandomPokemonNameAndImage(senderName) {
   try {
     const userId = await getOrCreateUser(senderName);
-    if (!userId) {
-      console.error('Não foi possível criar ou obter o usuário');
-      return { error: 'Erro ao obter usuário' };
-    }
+    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
 
     const captureInfo = await getUserCaptureInfo(userId);
-    if (!captureInfo) {
-      return { error: 'Erro ao obter informações de captura' };
-    }
+    if (!captureInfo) throw new Error('Erro ao obter informações de captura');
 
     const currentTime = new Date();
     const lastCaptureTime = new Date(captureInfo.last_capture_time);
     const timeSinceLastCapture = currentTime - lastCaptureTime;
 
     if (timeSinceLastCapture < COOLDOWN_PERIOD && captureInfo.capture_count >= CAPTURE_LIMIT) {
-      const remainingTime = Math.ceil((COOLDOWN_PERIOD - timeSinceLastCapture) / 60000); // Tempo restante em minutos
+      const remainingTime = Math.ceil((COOLDOWN_PERIOD - timeSinceLastCapture) / 60000);
       return { error: `Você atingiu o limite de capturas. Tente novamente em ${remainingTime} minutos.` };
     }
 
@@ -180,31 +136,23 @@ export async function getRandomPokemonNameAndImage(senderName) {
     }
 
     let pokemon = null;
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    while (!pokemon && attempts < maxAttempts) {
-      const randomId = Math.floor(Math.random() * 898) + 1;
+    for (let attempts = 0; attempts < MAX_FETCH_ATTEMPTS && !pokemon; attempts++) {
+      const randomId = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
       try {
         pokemon = await getPokemon(randomId);
       } catch (error) {
         console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
         pokemon = await fetchPokemonFromPokeAPI(randomId);
       }
-      attempts++;
     }
 
-    if (!pokemon) {
-      return { error: 'Não foi possível obter um Pokémon após várias tentativas' };
-    }
+    if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
 
-    const name = pokemon.name;
-    const imageUrl = pokemon.image.default || pokemon.image;
+    const { name, image } = pokemon;
+    const imageUrl = image.default || image;
 
     const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl);
-    if (!savedPokemon) {
-      return { error: 'Falha ao salvar o Pokémon no banco de dados' };
-    }
+    if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
 
     captureInfo.capture_count += 1;
     captureInfo.last_capture_time = currentTime.toISOString();
@@ -213,18 +161,15 @@ export async function getRandomPokemonNameAndImage(senderName) {
     console.log(`Novo Pokémon capturado: ${name}. Capturas restantes: ${CAPTURE_LIMIT - captureInfo.capture_count}`);
     return { name, imageUrl, capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count };
   } catch (error) {
-    console.error('Erro inesperado ao obter Pokémon:', error);
-    return { error: 'Erro inesperado ao obter Pokémon' };
+    console.error('Erro ao obter Pokémon:', error);
+    return { error: error.message || 'Erro inesperado ao obter Pokémon' };
   }
 }
 
 export async function getUserPokemon(senderName) {
   try {
     const userId = await getOrCreateUser(senderName);
-    if (!userId) {
-      console.error('Usuário não encontrado');
-      return { error: 'Usuário não encontrado' };
-    }
+    if (!userId) throw new Error('Usuário não encontrado');
 
     const { data, error } = await supabase
       .from('pokemon_generated')
@@ -232,10 +177,7 @@ export async function getUserPokemon(senderName) {
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Erro ao obter Pokémon do usuário:', error);
-      return { error: 'Erro ao obter Pokémon do usuário' };
-    }
+    if (error) throw error;
 
     console.log(`Pokémon obtidos para o usuário ${senderName}:`, data);
 
@@ -249,13 +191,18 @@ export async function getUserPokemon(senderName) {
       pokemonCount: data.length
     };
   } catch (error) {
-    console.error('Erro inesperado ao obter Pokémon do usuário:', error);
-    return { error: 'Erro inesperado ao obter Pokémon do usuário' };
+    console.error('Erro ao obter Pokémon do usuário:', error);
+    return { error: error.message || 'Erro inesperado ao obter Pokémon do usuário' };
   }
 }
 
 async function createPokedexImage(pokemonList) {
-  const canvas = createCanvas(500, 100 * Math.ceil(pokemonList.length / 5));
+  const POKEMON_PER_ROW = 5;
+  const POKEMON_SIZE = 80;
+  const PADDING = 10;
+  const ROW_HEIGHT = 100;
+
+  const canvas = createCanvas(500, ROW_HEIGHT * Math.ceil(pokemonList.length / POKEMON_PER_ROW));
   const ctx = canvas.getContext('2d');
 
   ctx.fillStyle = '#f0f0f0';
@@ -263,17 +210,17 @@ async function createPokedexImage(pokemonList) {
 
   for (let i = 0; i < pokemonList.length; i++) {
     const pokemon = pokemonList[i];
-    const x = (i % 5) * 100;
-    const y = Math.floor(i / 5) * 100;
+    const x = (i % POKEMON_PER_ROW) * (POKEMON_SIZE + PADDING) + PADDING;
+    const y = Math.floor(i / POKEMON_PER_ROW) * ROW_HEIGHT + PADDING;
 
     try {
       const image = await loadImage(pokemon.pokemon_image_url);
-      ctx.drawImage(image, x, y, 80, 80);
+      ctx.drawImage(image, x, y, POKEMON_SIZE, POKEMON_SIZE);
 
       ctx.font = '10px Arial';
       ctx.fillStyle = 'black';
       ctx.textAlign = 'center';
-      ctx.fillText(pokemon.pokemon_name, x + 40, y + 95);
+      ctx.fillText(pokemon.pokemon_name, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + PADDING);
     } catch (error) {
       console.error(`Erro ao carregar imagem para ${pokemon.pokemon_name}:`, error);
     }
