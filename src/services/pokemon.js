@@ -1,6 +1,69 @@
 import { getPokemon } from "pkmonjs";
 import fs from 'fs/promises';
 import path from 'path';
+import { createClient } from "@supabase/supabase-js";
+
+// Conexão com o supabase
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+async function savePokemonToSupabase(userName, pokemonName, pokemonImage) {
+  try {
+    const { data, error } = await supabase
+      .from('pokemon_generated')
+      .insert([
+        { username: userName, pokemon_name: pokemonName, pokemon_image_url: pokemonImage }
+      ]);
+    
+    if (error) throw error;
+    console.log('Pokémon salvo com sucesso', data);
+  } catch (error) {
+    console.error('Erro ao salvar Pokémon:', error);
+  }
+}
+
+async function getOrCreateUser(username) {
+  try {
+    // Verifica se o usuário já existe
+    let { data: user, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .single();
+
+    if (error) {
+      if (error.code === '42501') {
+        console.error('Erro de permissão ao acessar a tabela users. Verifique as políticas de segurança no Supabase.');
+      } else if (error.code !== 'PGRST116') {
+        throw error;
+      }
+    }
+
+    if (!user) {
+      // Se o usuário não existe, tenta criar um novo
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert({ username })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        if (insertError.code === '42501') {
+          console.error('Erro de permissão ao inserir na tabela users. Verifique as políticas de segurança no Supabase.');
+        }
+        throw insertError;
+      }
+      user = newUser;
+    }
+
+    return user ? user.id : null;
+  } catch (error) {
+    console.error('Erro ao obter ou criar usuário:', error);
+    return null;
+  }
+}
 
 export async function getRandomPokemonNameAndImage(senderName) {
   try {
@@ -11,6 +74,21 @@ export async function getRandomPokemonNameAndImage(senderName) {
     console.log(`Pokémon: ${name}`);
     console.log(`Image: ${imageUrl}`);
 
+    try {
+      // Obter ou criar o usuário
+      const userId = await getOrCreateUser(senderName);
+
+      if (userId) {
+        // Save to Supabase
+        await savePokemonToSupabase(senderName, name, imageUrl);
+      } else {
+        console.log('Não foi possível criar ou obter o usuário. O Pokémon não será salvo no banco de dados.');
+      }
+    } catch (dbError) {
+      console.error('Erro ao interagir com o banco de dados:', dbError);
+      // Continua a execução mesmo se houver erro no banco de dados
+    }
+
     // Create or append to the user's file
     const fileName = `${senderName}.txt`;
     const filePath = path.join('./src/media/pokemon', fileName);
@@ -18,41 +96,14 @@ export async function getRandomPokemonNameAndImage(senderName) {
 
     try {
       await fs.mkdir(path.dirname(filePath), { recursive: true });
-      const fileStats = await fs.stat(filePath).catch(() => null);
-      
-      if (!fileStats) {
-        await fs.writeFile(filePath, pokemonEntry);
-        console.log(`File created: ${filePath}`);
-      } else {
-        await fs.appendFile(filePath, pokemonEntry);
-        console.log(`File updated: ${filePath}`);
-      }
+      await fs.appendFile(filePath, pokemonEntry);
+      console.log(`File updated: ${filePath}`);
     } catch (fileError) {
       console.error('Error writing to file:', fileError);
     }
     return { name, imageUrl };
   } catch (error) {
     console.error('Error fetching random Pokémon:', error);
-    throw error;
-  }
-}
-
-export async function getUserPokemon(senderName) {
-  try {
-    const fileName = `${senderName}.txt`;
-    const filePath = path.join('./src/media/pokemon', fileName);
-
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    const pokemonList = fileContent.trim().split('\n');
-
-    console.log(`Pokémon list for ${senderName}:`, pokemonList);
-    return pokemonList;
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      console.log(`No Pokémon file found for ${senderName}`);
-      return [];
-    }
-    console.error('Error reading user Pokémon file:', error);
     throw error;
   }
 }
