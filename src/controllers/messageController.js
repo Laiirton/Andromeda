@@ -24,164 +24,133 @@ import { addToQueue } from "../utils/requestQueue.js";
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
 const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
 
-async function handleGenerativeAI(
-  message,
-  senderName,
-  keyword,
-  generateResponse
-) {
-  try {
-    let prompt;
+class MessageController {
+  static async handleGenerativeAI(message, senderName, keyword, generateResponse) {
+    try {
+      const prompt = await this.extractPrompt(message, keyword);
+      if (!prompt) {
+        await message.reply(PROMPT_REPLY);
+        throw new Error(EMPTY_PROMPT_ERROR);
+      }
+
+      console.log(`[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`);
+      const response = await generateResponse(prompt);
+
+      console.log(`[${new Date().toLocaleString()}] Usuário ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`);
+      await message.reply(response);
+    } catch (error) {
+      console.error(`[${new Date().toLocaleString()}] Erro ao gerar resposta: ${error.message}`);
+    }
+  }
+
+  static async extractPrompt(message, keyword) {
     const quotedMessage = await message.getQuotedMessage();
-
     if (quotedMessage) {
-      prompt = `${quotedMessage.body.trim()} ${message.body
-        .replace(new RegExp(keyword, "i"), "")
-        .trim()}`;
+      return `${quotedMessage.body.trim()} ${message.body.replace(new RegExp(keyword, "i"), "").trim()}`;
+    }
+    return message.body.replace(new RegExp(keyword, "i"), "").trim();
+  }
+
+  static async handleCommand(client, message, command) {
+    const contact = await message.getContact();
+    const senderName = contact.pushname;
+
+    const commandHandlers = {
+      transcribe: () => this.handleTranscribe(message),
+      fig: () => sendSticker(client, message, senderName),
+      img: () => sendImage(client, message),
+      delete: () => deleteMessage(message, senderName),
+      pussy: () => this.handleNSFW(client, message, senderName, command),
+      ass: () => this.handleNSFW(client, message, senderName, command),
+      dick: () => this.handleNSFW(client, message, senderName, command),
+      futa: () => this.handleNSFW(client, message, senderName, command),
+      hentai: () => this.handleNSFW(client, message, senderName, command),
+      yaoi: () => this.handleNSFW(client, message, senderName, command),
+      boobs: () => this.handleNSFW(client, message, senderName, command),
+      gay: () => this.handleNSFW(client, message, senderName, command),
+      r34: () => this.handleRule34(client, message, senderName),
+      menu: () => message.reply(menu),
+      nsfw: () => message.reply(menuNSFW),
+      groups: () => printGroupList(client),
+      pokemon: () => this.handlePokemon(client, message, senderName),
+      pokedex: () => this.handlePokedex(client, message, senderName),
+    };
+
+    const handler = commandHandlers[command];
+    if (handler) {
+      await handler();
     } else {
-      prompt = message.body.replace(new RegExp(keyword, "i"), "").trim();
+      await message.reply("Comando inválido. Digite !menu para ver os comandos disponíveis.");
     }
+  }
 
-    if (!prompt) {
-      message.reply(PROMPT_REPLY);
-      throw new Error(EMPTY_PROMPT_ERROR);
+  static async handleTranscribe(message) {
+    const quotedMessage = await message.getQuotedMessage();
+    const media = await quotedMessage.downloadMedia();
+    const audioBuffer = Buffer.from(media.data, "base64");
+    const transcription = await whisperTranscription(audioBuffer);
+    console.log("Resultado da transcrição:", transcription);
+    await message.reply(transcription);
+  }
+
+  static async handleNSFW(client, message, senderName, category) {
+    await sendNSFWImage(client, message, senderName, category);
+  }
+
+  static async handleRule34(client, message, senderName) {
+    const prompt = message.body.slice(5).trim();
+    await searchRule34(client, message, senderName, [prompt]);
+  }
+
+  static async handlePokemon(client, message, senderName) {
+    try {
+      const result = await addToQueue(() => getRandomPokemonNameAndImage(senderName));
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        const media = await MessageMedia.fromUrl(result.imageUrl);
+        await client.sendMessage(message.from, media, {
+          caption: `Parabéns, ${senderName}! Você capturou um ${result.name}!\nCapturas restantes: ${result.capturesRemaining}`,
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao obter Pokémon aleatório:", error);
+      await message.reply("Desculpe, ocorreu um erro inesperado. Tente novamente mais tarde.");
     }
-
-    console.log(
-      `[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`
-    );
-    const response = await generateResponse(prompt);
-
-    console.log(
-      `[${new Date().toLocaleString()}] Úsuario ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`
-    );
-    message.reply(response);
-  } catch (error) {
-    console.error(
-      `[${new Date().toLocaleString()}] Erro ao gerar resposta: ${
-        error.message
-      }`
-    );
   }
-}
 
-async function handleCommand(client, message, command) {
-  const contact = await message.getContact();
-  const senderName = contact.pushname;
-
-  switch (command) {
-    case "transcribe":
-      const quotedMessage = await message.getQuotedMessage();
-      const media = await quotedMessage.downloadMedia();
-      const audioBuffer = Buffer.from(media.data, "base64");
-      const transcription = await whisperTranscription(audioBuffer);
-      console.log("Transcription result:", transcription);
-      await message.reply(transcription);
-      break;
-
-    case "fig":
-      await sendSticker(client, message, senderName);
-      break;
-
-    case "img":
-      await sendImage(client, message);
-      break;
-
-    case "delete":
-      await deleteMessage(message, senderName);
-      break;
-
-    case "pussy":
-    case "ass":
-    case "dick":
-    case "futa":
-    case "hentai":
-    case "yaoi":
-    case "boobs":
-    case "gay":
-      await sendNSFWImage(client, message, senderName, command);
-      break;
-
-    case "r34":
-      let prompt = message.body.slice(5).trim();
-      await searchRule34(client, message, senderName, [prompt]);
-      break;
-
-    case "menu":
-      message.reply(menu);
-      break;
-
-    case "nsfw":
-      message.reply(menuNSFW);
-      break;
-
-    case "groups":
-      await printGroupList(client);
-      break;
-
-    case "pokemon":
-      try {
-        const result = await addToQueue(() => getRandomPokemonNameAndImage(senderName));
-        if (result.error) {
-          message.reply(result.error);
-        } else {
-          const media = await MessageMedia.fromUrl(result.imageUrl);
-          await client.sendMessage(message.from, media, {
-            caption: `Parabéns, ${senderName}! Você capturou um ${result.name}!\nCapturas restantes: ${result.capturesRemaining}`,
-          });
-        }
-      } catch (error) {
-        console.error("Erro ao obter Pokémon aleatório:", error);
-        message.reply(
-          "Desculpe, ocorreu um erro inesperado. Tente novamente mais tarde."
-        );
+  static async handlePokedex(client, message, senderName) {
+    try {
+      const result = await addToQueue(() => getUserPokemon(senderName));
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        const media = new MessageMedia('image/png', result.pokedexImage.toString('base64'), 'pokedex.png');
+        const caption = `Essa é a sua Pokédex, ${senderName}! Você já capturou ${result.pokemonCount} Pokémon!`;
+        await client.sendMessage(message.from, media, { caption });
       }
-      break;
+    } catch (error) {
+      console.error("Erro ao enviar Pokédex:", error);
+      await message.reply("Desculpe, ocorreu um erro ao buscar sua Pokédex. Tente novamente mais tarde.");
+    }
+  }
 
-    case "pokedex":
-      try {
-        const result = await addToQueue(() => getUserPokemon(senderName));
-        if (result.error) {
-          message.reply(result.error);
-        } else {
-          const media = new MessageMedia('image/png', result.pokedexImage.toString('base64'), 'pokedex.png');
-          const caption = `Essa é a sua Pokédex, ${senderName}! Você já capturou ${result.pokemonCount} Pokémon!`;
-          await client.sendMessage(message.from, media, { caption });
-        }
-      } catch (error) {
-        console.error("Erro ao enviar Pokédex:", error);
-        message.reply(
-          "Desculpe, ocorreu um erro ao buscar sua Pokédex. Tente novamente mais tarde."
-        );
-      }
-      break;
+  static async processMessage(client, message) {
+    const contact = await message.getContact();
+    const senderName = contact.pushname;
 
-    default:
-      message.reply(
-        "Invalid command, try !menu to see the available commands."
-      );
+    messageLog(message, senderName);
+
+    const lowerCaseBody = message.body.toLowerCase();
+    if (lowerCaseBody.includes("coiso")) {
+      await this.handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
+    } else if (lowerCaseBody.includes("porrinha")) {
+      await this.handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
+    } else if (message.body.startsWith("!")) {
+      const [command] = message.body.toLowerCase().slice(1).split(" ");
+      await MessageController.handleCommand(client, message, command);
+    }
   }
 }
 
-export async function processMessage(client, message) {
-  const contact = await message.getContact();
-  const senderName = contact.pushname;
-
-  // Log the all messages sended
-  messageLog(message, senderName);
-
-  // Generative AI Sistem
-  if (message.body.toLowerCase().includes("coiso")) {
-    await handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
-  }
-
-  if (message.body.toLowerCase().includes("porrinha")) {
-    await handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
-  }
-
-  // Command Handler
-  if (message.body.startsWith("!")) {
-    const [command] = message.body.toLowerCase().slice(1).split(" ");
-    await handleCommand(client, message, command);
-  }
-}
+export const processMessage = MessageController.processMessage;
