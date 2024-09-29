@@ -1,48 +1,46 @@
 import { getPokemon } from "pkmonjs";
-import fs from 'fs/promises';
-import path from 'path';
 import { createClient } from "@supabase/supabase-js";
 
 // Conexão com o supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-async function savePokemonToSupabase(userName, pokemonName, pokemonImage) {
+async function savePokemonToSupabase(userId, pokemonName, pokemonImage) {
   try {
     const { data, error } = await supabase
       .from('pokemon_generated')
       .insert([
-        { username: userName, pokemon_name: pokemonName, pokemon_image_url: pokemonImage }
+        { user_id: userId, pokemon_name: pokemonName, pokemon_image_url: pokemonImage }
       ]);
     
-    if (error) throw error;
-    console.log('Pokémon salvo com sucesso', data);
+    if (error) {
+      console.error('Erro ao salvar Pokémon:', error);
+      return null;
+    }
+    console.log('Pokémon salvo com sucesso:', { userId, pokemonName, pokemonImage });
+    return { userId, pokemonName, pokemonImage };
   } catch (error) {
-    console.error('Erro ao salvar Pokémon:', error);
+    console.error('Erro inesperado ao salvar Pokémon:', error);
+    return null;
   }
 }
 
 async function getOrCreateUser(username) {
   try {
-    // Verifica se o usuário já existe
     let { data: user, error } = await supabase
       .from('users')
       .select('id')
       .eq('username', username)
       .single();
 
-    if (error) {
-      if (error.code === '42501') {
-        console.error('Erro de permissão ao acessar a tabela users. Verifique as políticas de segurança no Supabase.');
-      } else if (error.code !== 'PGRST116') {
-        throw error;
-      }
+    if (error && error.code !== 'PGRST116') {
+      console.error('Erro ao buscar usuário:', error);
+      return null;
     }
 
     if (!user) {
-      // Se o usuário não existe, tenta criar um novo
       const { data: newUser, error: insertError } = await supabase
         .from('users')
         .insert({ username })
@@ -50,60 +48,91 @@ async function getOrCreateUser(username) {
         .single();
 
       if (insertError) {
-        if (insertError.code === '42501') {
-          console.error('Erro de permissão ao inserir na tabela users. Verifique as políticas de segurança no Supabase.');
-        }
-        throw insertError;
+        console.error('Erro ao criar novo usuário:', insertError);
+        return null;
       }
       user = newUser;
     }
 
-    return user ? user.id : null;
+    return user.id;
   } catch (error) {
-    console.error('Erro ao obter ou criar usuário:', error);
+    console.error('Erro inesperado ao obter ou criar usuário:', error);
+    return null;
+  }
+}
+
+async function getPokemonFromDatabase(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('pokemon_generated')
+      .select('pokemon_name, pokemon_image_url')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      console.error('Erro ao buscar Pokémon do banco de dados:', error);
+      return null;
+    }
+    return data.length > 0 ? data[0] : null;
+  } catch (error) {
+    console.error('Erro inesperado ao buscar Pokémon do banco de dados:', error);
     return null;
   }
 }
 
 export async function getRandomPokemonNameAndImage(senderName) {
   try {
+    const userId = await getOrCreateUser(senderName);
+    if (!userId) {
+      console.error('Não foi possível criar ou obter o usuário');
+      return null;
+    }
+
     const randomId = Math.floor(Math.random() * 898) + 1;
     const randomPokemon = await getPokemon(randomId);
     const name = randomPokemon.name;
     const imageUrl = randomPokemon.image.default;
-    console.log(`Pokémon: ${name}`);
-    console.log(`Image: ${imageUrl}`);
+    console.log(`Novo Pokémon gerado: ${name}`);
 
-    try {
-      // Obter ou criar o usuário
-      const userId = await getOrCreateUser(senderName);
-
-      if (userId) {
-        // Save to Supabase
-        await savePokemonToSupabase(senderName, name, imageUrl);
-      } else {
-        console.log('Não foi possível criar ou obter o usuário. O Pokémon não será salvo no banco de dados.');
-      }
-    } catch (dbError) {
-      console.error('Erro ao interagir com o banco de dados:', dbError);
-      // Continua a execução mesmo se houver erro no banco de dados
+    const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl);
+    if (savedPokemon) {
+      console.log('Pokémon salvo com sucesso no banco de dados');
+    } else {
+      console.error('Falha ao salvar o Pokémon no banco de dados');
     }
 
-    // Create or append to the user's file
-    const fileName = `${senderName}.txt`;
-    const filePath = path.join('./src/media/pokemon', fileName);
-    const pokemonEntry = `${name}\n`;
-
-    try {
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      await fs.appendFile(filePath, pokemonEntry);
-      console.log(`File updated: ${filePath}`);
-    } catch (fileError) {
-      console.error('Error writing to file:', fileError);
-    }
     return { name, imageUrl };
   } catch (error) {
-    console.error('Error fetching random Pokémon:', error);
-    throw error;
+    console.error('Erro inesperado ao obter Pokémon:', error);
+    return null;
+  }
+}
+
+export async function getUserPokemon(senderName) {
+  try {
+    const userId = await getOrCreateUser(senderName);
+    if (!userId) {
+      console.error('Usuário não encontrado');
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('pokemon_generated')
+      .select('pokemon_name')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao obter Pokémon do usuário:', error);
+      return [];
+    }
+
+    console.log(`Pokémon obtidos para o usuário ${senderName}:`, data);
+
+    return data.map(pokemon => pokemon.pokemon_name);
+  } catch (error) {
+    console.error('Erro inesperado ao obter Pokémon do usuário:', error);
+    return [];
   }
 }
