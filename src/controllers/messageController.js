@@ -19,6 +19,7 @@ import {
 } from "../services/pokemon.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
+import { addToQueue } from "../utils/requestQueue.js";
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
 const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
@@ -120,7 +121,7 @@ async function handleCommand(client, message, command) {
 
     case "pokemon":
       try {
-        const result = await getRandomPokemonNameAndImage(senderName);
+        const result = await addToQueue(() => getRandomPokemonNameAndImage(senderName));
         if (result.error) {
           message.reply(result.error);
         } else {
@@ -139,20 +140,17 @@ async function handleCommand(client, message, command) {
 
     case "pokedex":
       try {
-        const pokemonList = await getUserPokemon(senderName);
-        if (pokemonList.length > 0) {
-          const formattedPokedex = pokemonList
-            .map((pokemon, index) => `${index + 1}. ${pokemon}`)
-            .join("\n");
-          const responseMessage = `Sua Pokédex:\n${formattedPokedex}`;
-          await client.sendMessage(message.from, responseMessage);
+        const result = await addToQueue(() => getUserPokemon(senderName));
+        if (result.error) {
+          message.reply(result.error);
         } else {
-          await client.sendMessage(message.from, "Você ainda não capturou nenhum Pokémon ou ocorreu um erro ao buscar sua Pokédex.");
+          const media = new MessageMedia('image/png', result.pokedexImage.toString('base64'), 'pokedex.png');
+          const caption = `Essa é a sua Pokédex, ${senderName}! Você já capturou ${result.pokemonCount} Pokémon!`;
+          await client.sendMessage(message.from, media, { caption });
         }
       } catch (error) {
         console.error("Erro ao enviar Pokédex:", error);
-        await client.sendMessage(
-          message.from,
+        message.reply(
           "Desculpe, ocorreu um erro ao buscar sua Pokédex. Tente novamente mais tarde."
         );
       }
