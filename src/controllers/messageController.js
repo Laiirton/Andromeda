@@ -70,6 +70,7 @@ class MessageController {
       boobs: () => this.handleNSFW(client, message, senderName, command),
       gay: () => this.handleNSFW(client, message, senderName, command),
       r34: () => this.handleR34(client, message, senderName, message.body.split(' ')[1]),
+      r34random: () => this.handleR34Random(client, message, senderName),
       menu: () => message.reply(menu),
       nsfw: () => message.reply(menuNSFW),
       groups: () => printGroupList(client),
@@ -142,14 +143,15 @@ class MessageController {
       if (tag) {
         result = await searchR34(tag);
       } else {
-        result = await getRandomR34();
+        await message.reply("Por favor, forneça uma tag para buscar imagens R34 específicas. Para imagens aleatórias, use !r34random.");
+        return;
       }
 
       if (result && result.length > 0) {
         const randomImage = result[Math.floor(Math.random() * result.length)];
         const media = await MessageMedia.fromUrl(randomImage);
         await client.sendMessage(message.from, media, {
-          caption: `Aqui está sua imagem R34 ${tag ? `para "${tag}"` : "aleatória"}!`
+          caption: `Aqui está sua imagem R34 para "${tag}"!`
         });
         console.log(`Imagem R34 enviada para ${senderName} em ${new Date().toLocaleString()}`);
       } else {
@@ -158,6 +160,24 @@ class MessageController {
     } catch (error) {
       console.error("Erro ao buscar imagem R34:", error);
       await message.reply("Ocorreu um erro ao buscar a imagem. Por favor, tente novamente mais tarde.");
+    }
+  }
+
+  static async handleR34Random(client, message, senderName) {
+    try {
+      const result = await getRandomR34();
+      if (result) {
+        const media = await MessageMedia.fromUrl(result);
+        await client.sendMessage(message.from, media, {
+          caption: "Aqui está sua imagem R34 aleatória!"
+        });
+        console.log(`Imagem R34 aleatória enviada para ${senderName} em ${new Date().toLocaleString()}`);
+      } else {
+        await message.reply("Desculpe, não foi possível obter uma imagem R34 aleatória.");
+      }
+    } catch (error) {
+      console.error("Erro ao buscar imagem R34 aleatória:", error);
+      await message.reply("Ocorreu um erro ao buscar a imagem aleatória. Por favor, tente novamente mais tarde.");
     }
   }
 
