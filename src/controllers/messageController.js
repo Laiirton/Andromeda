@@ -120,16 +120,14 @@ async function handleCommand(client, message, command) {
 
     case "pokemon":
       try {
-        const pokemon = await getRandomPokemonNameAndImage(senderName);
-        if (pokemon) {
-          const media = await MessageMedia.fromUrl(pokemon.imageUrl);
-          await client.sendMessage(message.from, media, {
-            caption: `Parabéns, ${senderName}! Você capturou um ${pokemon.name}!`,
-          });
+        const result = await getRandomPokemonNameAndImage(senderName);
+        if (result.error) {
+          message.reply(result.error);
         } else {
-          message.reply(
-            "Desculpe, ocorreu um erro ao buscar o Pokémon. Tente novamente mais tarde."
-          );
+          const media = await MessageMedia.fromUrl(result.imageUrl);
+          await client.sendMessage(message.from, media, {
+            caption: `Parabéns, ${senderName}! Você capturou um ${result.name}!\nCapturas restantes: ${result.capturesRemaining}`,
+          });
         }
       } catch (error) {
         console.error("Erro ao obter Pokémon aleatório:", error);
