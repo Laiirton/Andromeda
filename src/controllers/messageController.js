@@ -20,6 +20,7 @@ import {
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
 import { addToQueue } from "../utils/requestQueue.js";
+import { searchR34, getRandomR34 } from "../services/r34Service.js";
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
 const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
@@ -68,7 +69,7 @@ class MessageController {
       yaoi: () => this.handleNSFW(client, message, senderName, command),
       boobs: () => this.handleNSFW(client, message, senderName, command),
       gay: () => this.handleNSFW(client, message, senderName, command),
-      r34: () => this.handleRule34(client, message, senderName),
+      r34: () => this.handleR34(client, message, senderName, message.body.split(' ')[1]),
       menu: () => message.reply(menu),
       nsfw: () => message.reply(menuNSFW),
       groups: () => printGroupList(client),
@@ -132,6 +133,31 @@ class MessageController {
     } catch (error) {
       console.error("Erro ao enviar Pokédex:", error);
       await message.reply("Desculpe, ocorreu um erro ao buscar sua Pokédex. Tente novamente mais tarde.");
+    }
+  }
+
+  static async handleR34(client, message, senderName, tag) {
+    try {
+      let result;
+      if (tag) {
+        result = await searchR34(tag);
+      } else {
+        result = await getRandomR34();
+      }
+
+      if (result && result.length > 0) {
+        const randomImage = result[Math.floor(Math.random() * result.length)];
+        const media = await MessageMedia.fromUrl(randomImage);
+        await client.sendMessage(message.from, media, {
+          caption: `Aqui está sua imagem R34 ${tag ? `para "${tag}"` : "aleatória"}!`
+        });
+        console.log(`Imagem R34 enviada para ${senderName} em ${new Date().toLocaleString()}`);
+      } else {
+        await message.reply("Desculpe, não encontrei nenhuma imagem para essa tag.");
+      }
+    } catch (error) {
+      console.error("Erro ao buscar imagem R34:", error);
+      await message.reply("Ocorreu um erro ao buscar a imagem. Por favor, tente novamente mais tarde.");
     }
   }
 
