@@ -1,5 +1,7 @@
 import { getPokemon } from "pkmonjs";
 import { createClient } from "@supabase/supabase-js";
+import { createCanvas, loadImage } from 'canvas';
+import axios from 'axios';
 
 // Conexão com o supabase
 const supabase = createClient(
@@ -138,6 +140,19 @@ async function updateUserCaptureInfo(userId, captureCount, lastCaptureTime) {
   }
 }
 
+async function fetchPokemonFromPokeAPI(id) {
+  try {
+    const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
+    return {
+      name: response.data.name,
+      image: response.data.sprites.other['official-artwork'].front_default || response.data.sprites.front_default
+    };
+  } catch (error) {
+    console.error(`Erro ao buscar Pokémon da PokeAPI: ${error}`);
+    return null;
+  }
+}
+
 export async function getRandomPokemonNameAndImage(senderName) {
   try {
     const userId = await getOrCreateUser(senderName);
@@ -164,10 +179,27 @@ export async function getRandomPokemonNameAndImage(senderName) {
       captureInfo.capture_count = 0;
     }
 
-    const randomId = Math.floor(Math.random() * 898) + 1;
-    const randomPokemon = await getPokemon(randomId);
-    const name = randomPokemon.name;
-    const imageUrl = randomPokemon.image.default;
+    let pokemon = null;
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while (!pokemon && attempts < maxAttempts) {
+      const randomId = Math.floor(Math.random() * 898) + 1;
+      try {
+        pokemon = await getPokemon(randomId);
+      } catch (error) {
+        console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
+        pokemon = await fetchPokemonFromPokeAPI(randomId);
+      }
+      attempts++;
+    }
+
+    if (!pokemon) {
+      return { error: 'Não foi possível obter um Pokémon após várias tentativas' };
+    }
+
+    const name = pokemon.name;
+    const imageUrl = pokemon.image.default || pokemon.image;
 
     const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl);
     if (!savedPokemon) {
@@ -191,25 +223,61 @@ export async function getUserPokemon(senderName) {
     const userId = await getOrCreateUser(senderName);
     if (!userId) {
       console.error('Usuário não encontrado');
-      return [];
+      return { error: 'Usuário não encontrado' };
     }
 
     const { data, error } = await supabase
       .from('pokemon_generated')
-      .select('pokemon_name')
+      .select('pokemon_name, pokemon_image_url')
       .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
     if (error) {
       console.error('Erro ao obter Pokémon do usuário:', error);
-      return [];
+      return { error: 'Erro ao obter Pokémon do usuário' };
     }
 
     console.log(`Pokémon obtidos para o usuário ${senderName}:`, data);
 
-    return data.map(pokemon => pokemon.pokemon_name);
+    if (data.length === 0) {
+      return { error: 'Nenhum Pokémon capturado ainda' };
+    }
+
+    const pokedexImage = await createPokedexImage(data);
+    return { 
+      pokedexImage,
+      pokemonCount: data.length
+    };
   } catch (error) {
     console.error('Erro inesperado ao obter Pokémon do usuário:', error);
-    return [];
+    return { error: 'Erro inesperado ao obter Pokémon do usuário' };
   }
+}
+
+async function createPokedexImage(pokemonList) {
+  const canvas = createCanvas(500, 100 * Math.ceil(pokemonList.length / 5));
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#f0f0f0';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let i = 0; i < pokemonList.length; i++) {
+    const pokemon = pokemonList[i];
+    const x = (i % 5) * 100;
+    const y = Math.floor(i / 5) * 100;
+
+    try {
+      const image = await loadImage(pokemon.pokemon_image_url);
+      ctx.drawImage(image, x, y, 80, 80);
+
+      ctx.font = '10px Arial';
+      ctx.fillStyle = 'black';
+      ctx.textAlign = 'center';
+      ctx.fillText(pokemon.pokemon_name, x + 40, y + 95);
+    } catch (error) {
+      console.error(`Erro ao carregar imagem para ${pokemon.pokemon_name}:`, error);
+    }
+  }
+
+  return canvas.toBuffer('image/png');
 }
