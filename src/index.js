@@ -9,8 +9,11 @@ function initWhatsappClient() {
   const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-      headless: false,
-      executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
+      headless: 'new',
+      executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+      args: [
+        '--window-position=-1000,-1000'
+      ]
     },
   });
 
