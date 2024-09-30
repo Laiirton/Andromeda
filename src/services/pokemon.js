@@ -185,7 +185,7 @@ export async function getUserPokemon(senderName) {
       return { error: 'Nenhum Pokémon capturado ainda' };
     }
 
-    const pokedexImage = await createPokedexImage(data);
+    const pokedexImage = await createPokedexImage(data, senderName);
     return { 
       pokedexImage,
       pokemonCount: data.length
@@ -196,35 +196,126 @@ export async function getUserPokemon(senderName) {
   }
 }
 
-async function createPokedexImage(pokemonList) {
-  const POKEMON_PER_ROW = 5;
-  const POKEMON_SIZE = 80;
-  const PADDING = 10;
-  const ROW_HEIGHT = 100;
+async function createPokedexImage(pokemonList, username) {
+  const MAX_IMAGE_SIZE = 15 * 1024 * 1024; // 15MB em bytes
+  const BACKGROUND_WIDTH = 3000;
+  const BACKGROUND_HEIGHT = 2000;
+  let POKEMON_PER_ROW = 8;
+  let POKEMON_SIZE = 200;
+  let PADDING = 40;
+  let NAME_HEIGHT = 60;
+  let TITLE_HEIGHT = 120; // Altura reservada para o título
+  let quality = 1;
 
-  const canvas = createCanvas(500, ROW_HEIGHT * Math.ceil(pokemonList.length / POKEMON_PER_ROW));
-  const ctx = canvas.getContext('2d');
+  let imageBuffer;
+  do {
+    const ROW_HEIGHT = POKEMON_SIZE + NAME_HEIGHT + PADDING;
+    const CONTENT_WIDTH = (POKEMON_SIZE + PADDING) * POKEMON_PER_ROW;
+    const CONTENT_HEIGHT = ROW_HEIGHT * Math.ceil(pokemonList.length / POKEMON_PER_ROW);
+    const SCALE_FACTOR = Math.min(
+      (BACKGROUND_WIDTH - 2 * PADDING) / CONTENT_WIDTH,
+      (BACKGROUND_HEIGHT - TITLE_HEIGHT - 2 * PADDING) / CONTENT_HEIGHT
+    );
+    
+    const CANVAS_WIDTH = BACKGROUND_WIDTH;
+    const CANVAS_HEIGHT = BACKGROUND_HEIGHT;
 
-  ctx.fillStyle = '#f0f0f0';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    const ctx = canvas.getContext('2d');
 
-  for (let i = 0; i < pokemonList.length; i++) {
-    const pokemon = pokemonList[i];
-    const x = (i % POKEMON_PER_ROW) * (POKEMON_SIZE + PADDING) + PADDING;
-    const y = Math.floor(i / POKEMON_PER_ROW) * ROW_HEIGHT + PADDING;
+    // Carrega e desenha o background
+    const backgroundImage = await loadImage('./src/media/pokedex.jpg');
+    ctx.drawImage(backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    try {
-      const image = await loadImage(pokemon.pokemon_image_url);
-      ctx.drawImage(image, x, y, POKEMON_SIZE, POKEMON_SIZE);
+    // Adiciona um overlay semi-transparente para melhorar a legibilidade
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      ctx.font = '10px Arial';
-      ctx.fillStyle = 'black';
-      ctx.textAlign = 'center';
-      ctx.fillText(pokemon.pokemon_name, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + PADDING);
-    } catch (error) {
-      console.error(`Erro ao carregar imagem para ${pokemon.pokemon_name}:`, error);
+    // Adiciona o título com o nome do usuário
+    ctx.font = `bold ${Math.floor(80 * SCALE_FACTOR)}px Arial`;
+    ctx.fillStyle = '#333';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.strokeStyle = 'white';
+    ctx.lineWidth = 8;
+    const title = `Pokédex de ${username}`;
+    ctx.strokeText(title, CANVAS_WIDTH / 2, 40);
+    ctx.fillText(title, CANVAS_WIDTH / 2, 40);
+
+    // Calcula o ponto de início para centralizar o conteúdo horizontalmente e começar logo abaixo do título
+    const startX = (CANVAS_WIDTH - CONTENT_WIDTH * SCALE_FACTOR) / 2;
+    const startY = TITLE_HEIGHT + PADDING;
+
+    ctx.save();
+    ctx.translate(startX, startY);
+    ctx.scale(SCALE_FACTOR, SCALE_FACTOR);
+
+    for (let i = 0; i < pokemonList.length; i++) {
+      const pokemon = pokemonList[i];
+      const x = (i % POKEMON_PER_ROW) * (POKEMON_SIZE + PADDING);
+      const y = Math.floor(i / POKEMON_PER_ROW) * ROW_HEIGHT;
+
+      try {
+        const image = await loadImage(pokemon.pokemon_image_url);
+        
+        // Desenha uma sombra suave
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+        
+        // Desenha um círculo branco como fundo para o Pokémon
+        ctx.beginPath();
+        ctx.arc(x + POKEMON_SIZE / 2, y + POKEMON_SIZE / 2, POKEMON_SIZE / 2, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+
+        // Reseta a sombra antes de desenhar a imagem
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Desenha a imagem do Pokémon
+        ctx.drawImage(image, x, y, POKEMON_SIZE, POKEMON_SIZE);
+
+        // Configura o estilo do texto
+        ctx.font = `bold ${Math.max(12, Math.floor(18 * SCALE_FACTOR))}px Arial`;
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+
+        // Adiciona um contorno ao texto para melhor legibilidade
+        const pokemonName = pokemon.pokemon_name.charAt(0).toUpperCase() + pokemon.pokemon_name.slice(1);
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 4;
+        ctx.strokeText(pokemonName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
+        ctx.fillText(pokemonName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
+
+      } catch (error) {
+        console.error(`Erro ao carregar imagem para ${pokemon.pokemon_name}:`, error);
+      }
     }
-  }
 
-  return canvas.toBuffer('image/png');
+    ctx.restore();
+
+    // Gera a imagem com a qualidade atual
+    imageBuffer = canvas.toBuffer('image/jpeg', { quality });
+
+    // Se a imagem ainda for muito grande, reduz a qualidade ou o tamanho
+    if (imageBuffer.length > MAX_IMAGE_SIZE) {
+      if (quality > 0.3) {
+        quality -= 0.1;
+      } else {
+        POKEMON_SIZE *= 0.9;
+        PADDING *= 0.9;
+        NAME_HEIGHT *= 0.9;
+        POKEMON_PER_ROW = Math.floor(POKEMON_PER_ROW * 1.1);
+        quality = 1;
+      }
+    }
+  } while (imageBuffer.length > MAX_IMAGE_SIZE);
+
+  console.log(`Tamanho final da imagem: ${imageBuffer.length} bytes`);
+  return imageBuffer;
 }
