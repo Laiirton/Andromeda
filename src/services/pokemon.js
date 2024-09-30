@@ -227,16 +227,12 @@ async function createPokedexImage(pokemonList, username) {
     const backgroundImage = await loadImage('./src/media/pokedex.jpg');
     ctx.drawImage(backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Adiciona um overlay semi-transparente para melhorar a legibilidade
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
     // Adiciona o título com o nome do usuário
     ctx.font = `bold ${Math.floor(80 * SCALE_FACTOR)}px Arial`;
-    ctx.fillStyle = '#333';
+    ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.strokeStyle = 'white';
+    ctx.strokeStyle = 'black';
     ctx.lineWidth = 8;
     const title = `Pokédex de ${username}`;
     ctx.strokeText(title, CANVAS_WIDTH / 2, 40);
@@ -259,15 +255,15 @@ async function createPokedexImage(pokemonList, username) {
         const image = await loadImage(pokemon.pokemon_image_url);
         
         // Desenha uma sombra suave
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 15;
         ctx.shadowOffsetX = 5;
         ctx.shadowOffsetY = 5;
         
         // Desenha um círculo branco como fundo para o Pokémon
         ctx.beginPath();
         ctx.arc(x + POKEMON_SIZE / 2, y + POKEMON_SIZE / 2, POKEMON_SIZE / 2, 0, Math.PI * 2);
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.fill();
 
         // Reseta a sombra antes de desenhar a imagem
@@ -281,13 +277,13 @@ async function createPokedexImage(pokemonList, username) {
 
         // Configura o estilo do texto
         ctx.font = `bold ${Math.max(12, Math.floor(18 * SCALE_FACTOR))}px Arial`;
-        ctx.fillStyle = '#333';
+        ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
 
         // Adiciona um contorno ao texto para melhor legibilidade
         const pokemonName = pokemon.pokemon_name.charAt(0).toUpperCase() + pokemon.pokemon_name.slice(1);
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = 'black';
         ctx.lineWidth = 4;
         ctx.strokeText(pokemonName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
         ctx.fillText(pokemonName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
