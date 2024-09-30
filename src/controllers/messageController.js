@@ -127,7 +127,7 @@ class MessageController {
       if (result.error) {
         await message.reply(result.error);
       } else {
-        const media = new MessageMedia('image/png', result.pokedexImage.toString('base64'), 'pokedex.png');
+        const media = new MessageMedia('image/jpeg', result.pokedexImage.toString('base64'), 'pokedex.jpg');
         const caption = `Essa é a sua Pokédex, ${senderName}! Você já capturou ${result.pokemonCount} Pokémon!`;
         await client.sendMessage(message.from, media, { caption });
       }
