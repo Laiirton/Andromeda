@@ -9,8 +9,8 @@ function initWhatsappClient() {
   const client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-      headless: 'new',
-      executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+      headless: false,
+      executablePath : "C:/Program Files/Google/Chrome/Application/chrome.exe",
       args: [
         '--window-position=-1000,-1000'
       ]
