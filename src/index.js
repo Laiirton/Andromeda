@@ -1,13 +1,32 @@
-import { initWhatsappClient } from "./utils/whatsappClient.js";
+import pkg from "whatsapp-web.js";
+import qrcode from "qrcode-terminal";
 import { processMessage } from "./controllers/messageController.js";
 import { initializeMessageScheduler } from "./utils/messageScheduler.js";
+
+const { Client, LocalAuth } = pkg;
+
+function initWhatsappClient() {
+  const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+      headless: false,
+      executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
+    },
+  });
+
+  client.on("qr", (qr) => {
+    qrcode.generate(qr, { small: true });
+  });
+
+  return client;
+}
 
 const client = initWhatsappClient();
 const messageScheduler = initializeMessageScheduler(client);
 
 client.on("ready", () => {
   console.log("Client is ready!");
-  messageScheduler.start(); // Inicia o agendamento quando o cliente estiver pronto
+  messageScheduler.start(); 
 });
 
 client.on("message", async (message) => {
