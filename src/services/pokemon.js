@@ -10,7 +10,7 @@ const supabase = createClient(
 );
 
 const CAPTURE_LIMIT = 5;
-const COOLDOWN_PERIOD = 60 * 60 * 1000; // 1 hora em milissegundos
+const COOLDOWN_PERIOD = 60 * 60 * 2000; // 1 hora em milissegundos
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
 
