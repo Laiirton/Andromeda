@@ -111,8 +111,9 @@ class MessageController {
         await message.reply(result.error);
       } else {
         const media = await MessageMedia.fromUrl(result.imageUrl);
+        const shinyStatus = result.isShiny ? "✨ Shiny ✨" : "normal";
         await client.sendMessage(message.from, media, {
-          caption: `Parabéns, ${senderName}! Você capturou um ${result.name}!\nCapturas restantes: ${result.capturesRemaining}`,
+          caption: `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}!\nCapturas restantes: ${result.capturesRemaining}`,
         });
       }
     } catch (error) {
