@@ -2,6 +2,7 @@ import { getPokemon } from "pkmonjs";
 import { createClient } from "@supabase/supabase-js";
 import { createCanvas, loadImage } from 'canvas';
 import axios from 'axios';
+import fs from 'fs';
 
 // Configuração do Supabase
 const supabase = createClient(
@@ -13,17 +14,23 @@ const CAPTURE_LIMIT = 5;
 const COOLDOWN_PERIOD = 60 * 60 * 2000; // 1 hora em milissegundos
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
+const SHINY_CHANCE = 1 / 4096; // Chance de 1 em 4096 para um Pokémon ser shiny
 
-async function savePokemonToSupabase(userId, pokemonName, pokemonImage) {
+async function savePokemonToSupabase(userId, pokemonName, pokemonImage, isShiny) {
   try {
     const { data, error } = await supabase
       .from('pokemon_generated')
-      .insert([{ user_id: userId, pokemon_name: pokemonName, pokemon_image_url: pokemonImage }]);
+      .insert([{ 
+        user_id: userId, 
+        pokemon_name: pokemonName, 
+        pokemon_image_url: pokemonImage,
+        is_shiny: isShiny
+      }]);
     
     if (error) throw error;
     
-    console.log('Pokémon salvo com sucesso:', { userId, pokemonName, pokemonImage });
-    return { userId, pokemonName, pokemonImage };
+    console.log('Pokémon salvo com sucesso:', { userId, pokemonName, pokemonImage, isShiny });
+    return { userId, pokemonName, pokemonImage, isShiny };
   } catch (error) {
     console.error('Erro ao salvar Pokémon:', error);
     return null;
@@ -136,30 +143,42 @@ export async function getRandomPokemonNameAndImage(senderName) {
     }
 
     let pokemon = null;
+    let isShiny = false;
     for (let attempts = 0; attempts < MAX_FETCH_ATTEMPTS && !pokemon; attempts++) {
       const randomId = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
       try {
         pokemon = await getPokemon(randomId);
+        isShiny = Math.random() < SHINY_CHANCE;
       } catch (error) {
         console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
         pokemon = await fetchPokemonFromPokeAPI(randomId);
+        isShiny = Math.random() < SHINY_CHANCE;
       }
     }
 
     if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
 
     const { name, image } = pokemon;
-    const imageUrl = image.default || image;
+    let imageUrl = image.default || image;
 
-    const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl);
+    if (isShiny) {
+      const shinyImagePath = `./assets/shiny_pokemon_images/${name}.jpg`;
+      if (fs.existsSync(shinyImagePath)) {
+        imageUrl = shinyImagePath;
+      } else {
+        console.warn(`Imagem shiny não encontrada para ${name}, usando imagem normal.`);
+      }
+    }
+
+    const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl, isShiny);
     if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
 
     captureInfo.capture_count += 1;
     captureInfo.last_capture_time = currentTime.toISOString();
     await updateUserCaptureInfo(userId, captureInfo.capture_count, captureInfo.last_capture_time);
 
-    console.log(`Novo Pokémon capturado: ${name}. Capturas restantes: ${CAPTURE_LIMIT - captureInfo.capture_count}`);
-    return { name, imageUrl, capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count };
+    console.log(`Novo Pokémon capturado: ${name} (${isShiny ? 'Shiny' : 'Normal'}). Capturas restantes: ${CAPTURE_LIMIT - captureInfo.capture_count}`);
+    return { name, imageUrl, capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count, isShiny };
   } catch (error) {
     console.error('Erro ao obter Pokémon:', error);
     return { error: error.message || 'Erro inesperado ao obter Pokémon' };
@@ -283,10 +302,11 @@ async function createPokedexImage(pokemonList, username) {
 
         // Adiciona um contorno ao texto para melhor legibilidade
         const pokemonName = pokemon.pokemon_name.charAt(0).toUpperCase() + pokemon.pokemon_name.slice(1);
+        const displayName = pokemon.is_shiny ? `${pokemonName} ✨` : pokemonName;
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 4;
-        ctx.strokeText(pokemonName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
-        ctx.fillText(pokemonName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
+        ctx.strokeText(displayName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
+        ctx.fillText(displayName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
 
       } catch (error) {
         console.error(`Erro ao carregar imagem para ${pokemon.pokemon_name}:`, error);
