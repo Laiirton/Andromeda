@@ -363,8 +363,25 @@ async function createPokedexImage(pokemonList, username, currentPage, totalPages
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
 
-        // Desenha a imagem do Pokémon
-        ctx.drawImage(image, x, y, POKEMON_SIZE, POKEMON_SIZE);
+        // Calcula as dimensões para manter a proporção da imagem
+        const aspectRatio = image.width / image.height;
+        let drawWidth = POKEMON_SIZE;
+        let drawHeight = POKEMON_SIZE;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (aspectRatio > 1) {
+          // Imagem mais larga que alta
+          drawHeight = POKEMON_SIZE / aspectRatio;
+          offsetY = (POKEMON_SIZE - drawHeight) / 2;
+        } else {
+          // Imagem mais alta que larga
+          drawWidth = POKEMON_SIZE * aspectRatio;
+          offsetX = (POKEMON_SIZE - drawWidth) / 2;
+        }
+
+        // Desenha a imagem do Pokémon mantendo a proporção
+        ctx.drawImage(image, x + offsetX, y + offsetY, drawWidth, drawHeight);
 
         // Configura o estilo do texto
         ctx.font = `bold ${Math.max(12, Math.floor(18 * SCALE_FACTOR))}px Arial`;
