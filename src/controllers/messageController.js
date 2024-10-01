@@ -15,7 +15,8 @@ import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
 import {
   getRandomPokemonNameAndImage,
-  getUserPokemon
+  getUserPokemon,
+  chooseCompanion,
 } from "../services/pokemon.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
@@ -52,7 +53,7 @@ class MessageController {
     return message.body.replace(new RegExp(keyword, "i"), "").trim();
   }
 
-  static async handleCommand(client, message, command) {
+  static async handleCommand(client, message, command, args) {
     const contact = await message.getContact();
     const senderName = contact.pushname;
 
@@ -75,12 +76,17 @@ class MessageController {
       nsfw: () => message.reply(menuNSFW),
       groups: () => printGroupList(client),
       pokemon: () => this.handlePokemon(client, message, senderName),
-      pokedex: () => this.handlePokedex(client, message, senderName),
+      pokedex: (args) => this.handlePokedex(client, message, senderName, args[0]),
+      companion: () => this.handleChooseCompanion(client, message, senderName),
     };
 
     const handler = commandHandlers[command];
     if (handler) {
-      await handler();
+      if (typeof handler === 'function') {
+        await handler(args);
+      } else {
+        await handler();
+      }
     } else {
       await message.reply("Comando inválido. Digite !menu para ver os comandos disponíveis.");
     }
@@ -112,9 +118,24 @@ class MessageController {
       } else {
         const media = await MessageMedia.fromUrl(result.imageUrl);
         const shinyStatus = result.isShiny ? "✨ Shiny ✨" : "normal";
-        await client.sendMessage(message.from, media, {
-          caption: `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}!\nCapturas restantes: ${result.capturesRemaining}`,
-        });
+        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}!\nCapturas restantes: ${result.capturesRemaining}`;
+        
+        // Envia a imagem do Pokémon capturado
+        await client.sendMessage(message.from, media, { caption });
+
+        // Verifica se houve evolução do companheiro
+        if (result.companionEvolution) {
+          // Envia uma mensagem separada sobre a evolução do companheiro
+          await message.reply(result.companionEvolution);
+          
+          // Se houver uma imagem do companheiro evoluído, envia-a
+          if (result.companionImage) {
+            const companionMedia = await MessageMedia.fromUrl(result.companionImage);
+            await client.sendMessage(message.from, companionMedia, {
+              caption: `Seu companheiro evoluiu para ${result.companionEvolution.split(' ').pop()}!`
+            });
+          }
+        }
       }
     } catch (error) {
       console.error("Erro ao obter Pokémon aleatório:", error);
@@ -124,13 +145,29 @@ class MessageController {
 
   static async handlePokedex(client, message, senderName) {
     try {
-      const result = await addToQueue(() => getUserPokemon(senderName));
+      const args = message.body.split(' ');
+      const page = args.length > 1 ? parseInt(args[1]) : 1;
+      
+      const result = await addToQueue(() => getUserPokemon(senderName, page));
       if (result.error) {
         await message.reply(result.error);
       } else {
-        const media = new MessageMedia('image/jpeg', result.pokedexImage.toString('base64'), 'pokedex.jpg');
-        const caption = `Essa é a sua Pokédex, ${senderName}! Você já capturou ${result.pokemonCount} Pokémon!`;
-        await client.sendMessage(message.from, media, { caption });
+        const { pokedexImages, pokemonCount, currentPage, totalPages } = result;
+        
+        for (let i = 0; i < pokedexImages.length; i++) {
+          const media = new MessageMedia('image/jpeg', pokedexImages[i].toString('base64'), `pokedex_${i+1}.jpg`);
+          const caption = i === 0 
+            ? `Essa é a sua Pokédex, ${senderName}! Você já capturou ${pokemonCount} Pokémon!\nPágina ${currentPage} de ${totalPages}`
+            : `Pokédex de ${senderName} - Página ${currentPage} de ${totalPages}`;
+          await client.sendMessage(message.from, media, { caption });
+        }
+        
+        if (currentPage < totalPages) {
+          await message.reply(`Para ver a próxima página, use o comando !pokedex ${currentPage + 1}`);
+        }
+        if (currentPage > 1) {
+          await message.reply(`Para ver a página anterior, use o comando !pokedex ${currentPage - 1}`);
+        }
       }
     } catch (error) {
       console.error("Erro ao enviar Pokédex:", error);
@@ -182,6 +219,33 @@ class MessageController {
     }
   }
 
+  static async handleChooseCompanion(client, message, senderName) {
+    const companionName = message.body.split(' ').slice(1).join(' ').trim();
+    if (!companionName) {
+      await message.reply("Por favor, forneça o nome do Pokémon que você deseja como companheiro. Exemplo: !companion Pikachu");
+      return;
+    }
+
+    try {
+      const result = await chooseCompanion(senderName, companionName);
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        if (result.imageUrl) {
+          const media = await MessageMedia.fromUrl(result.imageUrl);
+          await client.sendMessage(message.from, media, {
+            caption: result.message
+          });
+        } else {
+          await message.reply(result.message);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao escolher companheiro:", error);
+      await message.reply("Desculpe, ocorreu um erro ao escolher seu companheiro. Tente novamente mais tarde.");
+    }
+  }
+
   static async processMessage(client, message) {
     const contact = await message.getContact();
     const senderName = contact.pushname;
@@ -194,8 +258,8 @@ class MessageController {
     } else if (lowerCaseBody.includes("porrinha")) {
       await this.handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
     } else if (message.body.startsWith("!")) {
-      const [command] = message.body.toLowerCase().slice(1).split(" ");
-      await MessageController.handleCommand(client, message, command);
+      const [command, ...args] = message.body.toLowerCase().slice(1).split(" ");
+      await MessageController.handleCommand(client, message, command, args);
     }
   }
 }
