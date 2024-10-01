@@ -7,12 +7,11 @@ import {
   getOrCreateUser, 
   getUserCaptureInfo, 
   updateUserCaptureInfo, 
-  savePokemonToSupabase 
+  savePokemonToSupabase,
+  supabase
 } from './database.js';
 import { getCompanionProgress, evolveCompanion } from './companion.js';
 import { createPokedexImage } from './pokedex.js';
-import { supabase } from './database.js';
-import { getOrCreateUser } from './database.js';
 
 const CAPTURE_LIMIT = 5;
 const COOLDOWN_PERIOD = 60 * 60 * 2000; 
