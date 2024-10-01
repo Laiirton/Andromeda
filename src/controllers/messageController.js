@@ -120,23 +120,19 @@ class MessageController {
         if (result.imageUrl.startsWith('http')) {
           media = await MessageMedia.fromUrl(result.imageUrl);
         } else {
-          // Se a imagem for local, leia o arquivo
           const fs = await import('fs/promises');
           const buffer = await fs.readFile(result.imageUrl);
           media = new MessageMedia('image/jpeg', buffer.toString('base64'), `${result.name}.jpg`);
         }
         const shinyStatus = result.isShiny ? "✨ Shiny ✨" : "normal";
-        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}!\nCapturas restantes: ${result.capturesRemaining}`;
+        const rarityStatus = result.isLegendary ? "Lendário" : (result.isMythical ? "Mítico" : "");
+        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}${rarityStatus ? ` (${rarityStatus})` : ''}!\nCapturas restantes: ${result.capturesRemaining}`;
         
-        // Envia a imagem do Pokémon capturado
         await client.sendMessage(message.from, media, { caption });
 
-        // Verifica se houve evolução do companheiro
         if (result.companionEvolution) {
-          // Envia uma mensagem separada sobre a evolução do companheiro
           await message.reply(result.companionEvolution);
           
-          // Se houver uma imagem do companheiro evoluído, envia-a
           if (result.companionImage) {
             const companionMedia = await MessageMedia.fromUrl(result.companionImage);
             await client.sendMessage(message.from, companionMedia, {
