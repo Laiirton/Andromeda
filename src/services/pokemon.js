@@ -345,11 +345,7 @@ async function createPokedexImage(pokemonList, username, currentPage, totalPages
       try {
         const image = await loadImage(pokemon.pokemon_image_url);
         
-        // Desenha uma sombra suave
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        ctx.shadowBlur = 15;
-        ctx.shadowOffsetX = 5;
-        ctx.shadowOffsetY = 5;
+        ctx.save();
         
         // Cria um caminho circular para recortar a imagem
         ctx.beginPath();
@@ -361,12 +357,6 @@ async function createPokedexImage(pokemonList, username, currentPage, totalPages
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.fill();
 
-        // Reseta a sombra antes de desenhar a imagem
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-
         // Calcula as dimensões para manter a proporção da imagem
         const aspectRatio = image.width / image.height;
         let drawWidth = POKEMON_SIZE;
@@ -376,20 +366,37 @@ async function createPokedexImage(pokemonList, username, currentPage, totalPages
 
         if (aspectRatio > 1) {
           // Imagem mais larga que alta
-          drawHeight = POKEMON_SIZE / aspectRatio;
-          offsetY = (POKEMON_SIZE - drawHeight) / 2;
-        } else {
-          // Imagem mais alta que larga
-          drawWidth = POKEMON_SIZE * aspectRatio;
+          drawHeight = POKEMON_SIZE;
+          drawWidth = drawHeight * aspectRatio;
           offsetX = (POKEMON_SIZE - drawWidth) / 2;
+        } else {
+          // Imagem mais alta que larga ou quadrada
+          drawWidth = POKEMON_SIZE;
+          drawHeight = drawWidth / aspectRatio;
+          offsetY = (POKEMON_SIZE - drawHeight) / 2;
         }
 
         // Desenha a imagem do Pokémon mantendo a proporção
         ctx.drawImage(image, x + offsetX, y + offsetY, drawWidth, drawHeight);
 
-        // Restaura o contexto para remover o recorte circular
         ctx.restore();
-        ctx.save();
+
+        // Adiciona sombra ao círculo
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+        ctx.beginPath();
+        ctx.arc(x + POKEMON_SIZE / 2, y + POKEMON_SIZE / 2, POKEMON_SIZE / 2, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+
+        // Reseta a sombra
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
 
         // Configura o estilo do texto
         ctx.font = `bold ${Math.max(12, Math.floor(18 * SCALE_FACTOR))}px Arial`;
