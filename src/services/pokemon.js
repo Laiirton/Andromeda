@@ -16,6 +16,7 @@ const COOLDOWN_PERIOD = 60 * 60 * 2000;
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
 const SHINY_CHANCE = 1 / 4096; // Chance de 1 em 4096 para um Pokémon ser shiny
+const EVOLUTION_THRESHOLD = 50; // Número de capturas necessárias para evoluir
 
 async function savePokemonToSupabase(userId, pokemonName, pokemonImage, isShiny) {
   try {
@@ -188,7 +189,7 @@ export async function getRandomPokemonNameAndImage(senderName) {
         .eq('user_id', userId);
 
       // Verifica se o companheiro pode evoluir
-      if (companion.capture_count >= 10) { // Supondo que 10 capturas são necessárias para evoluir
+      if (companion.capture_count >= EVOLUTION_THRESHOLD) {
         const evolutionResult = await evolveCompanion(userId);
         if (evolutionResult.error) {
           console.error('Erro ao evoluir companheiro:', evolutionResult.error);
@@ -389,51 +390,70 @@ async function createPokedexImage(pokemonList, username, currentPage, totalPages
 
 async function selectCompanion(userId, companionName) {
   try {
-    // Verifica se o usuário já tem um companheiro
-    const { data: existingCompanion, error: checkError } = await supabase
-      .from('companions')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') throw checkError;
-
-    if (existingCompanion) {
-      return { error: 'Você já tem um companheiro selecionado.' };
-    }
-
     // Verifica se o Pokémon está na Pokédex do usuário
     const { data: userPokemon, error: pokemonError } = await supabase
       .from('pokemon_generated')
       .select('*')
       .eq('user_id', userId)
       .eq('pokemon_name', companionName.toLowerCase())
-      .single();
+      .limit(1); // Adicionamos um limite de 1 resultado
 
     if (pokemonError) throw pokemonError;
 
-    if (!userPokemon) {
+    if (!userPokemon || userPokemon.length === 0) {
       return { error: 'Você ainda não capturou este Pokémon. Capture-o primeiro para escolhê-lo como companheiro.' };
     }
 
-    // Insere o novo companheiro
-    const { data, error } = await supabase
+    // Verifica se o usuário já tem um companheiro
+    const { data: existingCompanion, error: checkError } = await supabase
       .from('companions')
-      .insert([{ 
-        user_id: userId, 
-        companion_name: companionName.toLowerCase(),
-        evolution_stage: 1,
-        capture_count: 0
-      }]);
+      .select('*')
+      .eq('user_id', userId)
+      .limit(1); // Adicionamos um limite de 1 resultado
 
-    if (error) throw error;
+    if (checkError && checkError.code !== 'PGRST116') throw checkError;
 
-    console.log('Companheiro selecionado com sucesso:', { userId, companionName });
-    return { 
-      userId, 
-      companionName: companionName.toLowerCase(),
-      companionImage: userPokemon.pokemon_image_url // Adicionando a URL da imagem
-    };
+    if (existingCompanion && existingCompanion.length > 0) {
+      // Atualiza o companheiro existente
+      const { data, error } = await supabase
+        .from('companions')
+        .update({ 
+          companion_name: companionName.toLowerCase(),
+          evolution_stage: 1,
+          capture_count: 0
+        })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      console.log('Companheiro atualizado com sucesso:', { userId, companionName });
+      return { 
+        userId, 
+        companionName: companionName.toLowerCase(),
+        companionImage: userPokemon[0].pokemon_image_url,
+        message: `Seu companheiro foi atualizado para ${companionName}. O contador de evolução foi resetado.`
+      };
+    } else {
+      // Insere o novo companheiro
+      const { data, error } = await supabase
+        .from('companions')
+        .insert([{ 
+          user_id: userId, 
+          companion_name: companionName.toLowerCase(),
+          evolution_stage: 1,
+          capture_count: 0
+        }]);
+
+      if (error) throw error;
+
+      console.log('Companheiro selecionado com sucesso:', { userId, companionName });
+      return { 
+        userId, 
+        companionName: companionName.toLowerCase(),
+        companionImage: userPokemon[0].pokemon_image_url,
+        message: `Parabéns! Você escolheu ${companionName} como seu companheiro!`
+      };
+    }
   } catch (error) {
     console.error('Erro ao selecionar companheiro:', error);
     return { error: error.message || 'Erro ao selecionar companheiro' };
@@ -540,7 +560,7 @@ function getEvolutionName(companionName, stage) {
   return evolutionStages[stage - 1];
 }
 
-// Adicione esta nova função de exportação
+// Atualize a função chooseCompanion para usar a nova lógica
 export async function chooseCompanion(senderName, companionName) {
   try {
     const userId = await getOrCreateUser(senderName);
@@ -552,8 +572,8 @@ export async function chooseCompanion(senderName, companionName) {
     }
 
     return {
-      message: `Parabéns! Você escolheu ${result.companionName} como seu companheiro!`,
-      imageUrl: result.companionImage // Adicionando a URL da imagem à resposta
+      message: result.message,
+      imageUrl: result.companionImage
     };
   } catch (error) {
     console.error('Erro ao escolher companheiro:', error);
