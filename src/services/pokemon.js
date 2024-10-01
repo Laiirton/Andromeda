@@ -351,9 +351,13 @@ async function createPokedexImage(pokemonList, username, currentPage, totalPages
         ctx.shadowOffsetX = 5;
         ctx.shadowOffsetY = 5;
         
-        // Desenha um círculo branco como fundo para o Pokémon
+        // Cria um caminho circular para recortar a imagem
         ctx.beginPath();
         ctx.arc(x + POKEMON_SIZE / 2, y + POKEMON_SIZE / 2, POKEMON_SIZE / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+
+        // Desenha um círculo branco como fundo para o Pokémon
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         ctx.fill();
 
@@ -382,6 +386,10 @@ async function createPokedexImage(pokemonList, username, currentPage, totalPages
 
         // Desenha a imagem do Pokémon mantendo a proporção
         ctx.drawImage(image, x + offsetX, y + offsetY, drawWidth, drawHeight);
+
+        // Restaura o contexto para remover o recorte circular
+        ctx.restore();
+        ctx.save();
 
         // Configura o estilo do texto
         ctx.font = `bold ${Math.max(12, Math.floor(18 * SCALE_FACTOR))}px Arial`;
