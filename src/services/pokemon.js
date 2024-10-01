@@ -4,6 +4,7 @@ import { createCanvas, loadImage } from 'canvas';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
+import { getRarityChance, isPokemonLegendary, isPokemonMythical } from '../utils/rarity.js';
 
 // Configuração do Supabase
 const supabase = createClient(
@@ -18,7 +19,7 @@ const MAX_FETCH_ATTEMPTS = 5;
 const SHINY_CHANCE = 1 / 4096; // Chance de 1 em 4096 para um Pokémon ser shiny
 const EVOLUTION_THRESHOLD = 50; // Número de capturas necessárias para evoluir
 
-async function savePokemonToSupabase(userId, pokemonName, pokemonImage, isShiny) {
+async function savePokemonToSupabase(userId, pokemonName, pokemonImage, isShiny, isLegendary, isMythical) {
   try {
     const { data, error } = await supabase
       .from('pokemon_generated')
@@ -26,13 +27,15 @@ async function savePokemonToSupabase(userId, pokemonName, pokemonImage, isShiny)
         user_id: userId, 
         pokemon_name: pokemonName, 
         pokemon_image_url: pokemonImage,
-        is_shiny: isShiny
+        is_shiny: isShiny,
+        is_legendary: isLegendary,
+        is_mythical: isMythical
       }]);
     
     if (error) throw error;
     
-    console.log('Pokémon salvo com sucesso:', { userId, pokemonName, pokemonImage, isShiny });
-    return { userId, pokemonName, pokemonImage, isShiny };
+    console.log('Pokémon salvo com sucesso:', { userId, pokemonName, pokemonImage, isShiny, isLegendary, isMythical });
+    return { userId, pokemonName, pokemonImage, isShiny, isLegendary, isMythical };
   } catch (error) {
     console.error('Erro ao salvar Pokémon:', error);
     return null;
@@ -163,16 +166,30 @@ export async function getRandomPokemonNameAndImage(senderName) {
 
     let pokemon = null;
     let isShiny = false;
-    for (let attempts = 0; attempts < MAX_FETCH_ATTEMPTS && !pokemon; attempts++) {
+    let attempts = 0;
+    
+    while (!pokemon && attempts < MAX_FETCH_ATTEMPTS) {
       const randomId = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
       try {
-        pokemon = await getPokemon(randomId);
-        isShiny = Math.random() < SHINY_CHANCE;
+        const tempPokemon = await getPokemon(randomId);
+        const rarityChance = getRarityChance(tempPokemon.name);
+        
+        if (Math.random() < rarityChance) {
+          pokemon = tempPokemon;
+          isShiny = Math.random() < SHINY_CHANCE;
+        }
       } catch (error) {
         console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
-        pokemon = await fetchPokemonFromPokeAPI(randomId);
-        isShiny = Math.random() < SHINY_CHANCE;
+        const tempPokemon = await fetchPokemonFromPokeAPI(randomId);
+        if (tempPokemon) {
+          const rarityChance = getRarityChance(tempPokemon.name);
+          if (Math.random() < rarityChance) {
+            pokemon = tempPokemon;
+            isShiny = Math.random() < SHINY_CHANCE;
+          }
+        }
       }
+      attempts++;
     }
 
     if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
@@ -189,7 +206,10 @@ export async function getRandomPokemonNameAndImage(senderName) {
       }
     }
 
-    const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl, isShiny);
+    const isLegendary = isPokemonLegendary(name);
+    const isMythical = isPokemonMythical(name);
+
+    const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl, isShiny, isLegendary, isMythical);
     if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
 
     captureInfo.capture_count += 1;
@@ -229,6 +249,8 @@ export async function getRandomPokemonNameAndImage(senderName) {
       imageUrl, 
       capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count, 
       isShiny,
+      isLegendary,
+      isMythical,
       companionEvolution,
       companionImage
     };
