@@ -116,13 +116,20 @@ export async function createPokedexImage(pokemonList, username, currentPage, tot
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
 
-        // Adiciona um contorno ao texto para melhor legibilidade
+        // Adiciona o nome e a contagem do Pokémon
         const pokemonName = pokemon.pokemon_name.charAt(0).toUpperCase() + pokemon.pokemon_name.slice(1);
         const displayName = pokemon.is_shiny ? `${pokemonName} ✨` : pokemonName;
+        const countText = `x${pokemon.count}`;
+        
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 4;
         ctx.strokeText(displayName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
         ctx.fillText(displayName, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 10, POKEMON_SIZE);
+
+        // Adiciona a contagem abaixo do nome
+        ctx.font = `${Math.max(10, Math.floor(14 * SCALE_FACTOR))}px Arial`;
+        ctx.strokeText(countText, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 35, POKEMON_SIZE);
+        ctx.fillText(countText, x + POKEMON_SIZE / 2, y + POKEMON_SIZE + 35, POKEMON_SIZE);
 
       } catch (error) {
         console.error(`Erro ao carregar imagem para ${pokemon.pokemon_name}:`, error);

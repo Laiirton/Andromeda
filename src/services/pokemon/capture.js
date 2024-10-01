@@ -150,36 +150,53 @@ export async function getUserPokemon(senderName, page = 1, itemsPerPage = 40) {
     const userId = await getOrCreateUser(senderName);
     if (!userId) throw new Error('Usuário não encontrado');
 
-    const { count, error: countError } = await supabase
+    // Obter o total de Pokémon únicos do usuário
+    const { data: uniquePokemon, error: countError } = await supabase
       .from('pokemon_generated')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
+      .select('pokemon_name')
+      .eq('user_id', userId)
+      .order('pokemon_name');
 
     if (countError) throw countError;
 
-    const totalPages = Math.ceil(count / itemsPerPage);
+    const uniquePokemonCount = new Set(uniquePokemon.map(p => p.pokemon_name)).size;
+    const totalPages = Math.ceil(uniquePokemonCount / itemsPerPage);
     page = Math.max(1, Math.min(page, totalPages));
 
+    // Obter os Pokémon únicos para a página atual, incluindo a contagem
     const { data, error } = await supabase
       .from('pokemon_generated')
-      .select('pokemon_name, pokemon_image_url, is_shiny')
+      .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true })
-      .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
+      .order('pokemon_name')
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    console.log(`Pokémon obtidos para o usuário ${senderName} (página ${page}):`, data);
+    const uniquePokemonData = [];
+    const seenPokemon = new Set();
 
-    if (data.length === 0) {
+    for (const pokemon of data) {
+      if (!seenPokemon.has(pokemon.pokemon_name)) {
+        seenPokemon.add(pokemon.pokemon_name);
+        const count = data.filter(p => p.pokemon_name === pokemon.pokemon_name).length;
+        uniquePokemonData.push({ ...pokemon, count });
+      }
+    }
+
+    const paginatedData = uniquePokemonData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+    console.log(`Pokémon únicos obtidos para o usuário ${senderName} (página ${page}):`, paginatedData);
+
+    if (paginatedData.length === 0) {
       return { error: 'Nenhum Pokémon capturado ainda' };
     }
 
-    const pokedexImage = await createPokedexImage(data, senderName, page, totalPages);
+    const pokedexImage = await createPokedexImage(paginatedData, senderName, page, totalPages);
 
     return { 
       pokedexImages: [pokedexImage],
-      pokemonCount: count,
+      pokemonCount: uniquePokemonCount,
       currentPage: page,
       totalPages: totalPages
     };
