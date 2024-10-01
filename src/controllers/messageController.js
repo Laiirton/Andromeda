@@ -17,7 +17,7 @@ import {
   getRandomPokemonNameAndImage,
   getUserPokemon,
   chooseCompanion,
-} from "../services/pokemon.js";
+} from "../services/pokemon/index.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
 import { addToQueue } from "../utils/requestQueue.js";
