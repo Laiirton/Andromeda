@@ -17,6 +17,10 @@ import {
   getRandomPokemonNameAndImage,
   getUserPokemon,
   chooseCompanion,
+  initiateTrade,
+  respondToTrade,
+  getPendingTradeForUser,
+  getPendingTradesForUser
 } from "../services/pokemon/index.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
@@ -78,6 +82,10 @@ class MessageController {
       pokemon: () => this.handlePokemon(client, message, senderName),
       pokedex: (args) => this.handlePokedex(client, message, senderName, args[0]),
       companion: () => this.handleChooseCompanion(client, message, senderName),
+      trade: () => this.handleTrade(client, message, senderName, args),
+      accepttrade: () => this.handleAcceptTrade(client, message, senderName, args),
+      rejecttrade: () => this.handleRejectTrade(client, message, senderName),
+      pendingtrades: () => this.handlePendingTrades(client, message, senderName),
     };
 
     const handler = commandHandlers[command];
@@ -247,6 +255,149 @@ class MessageController {
     } catch (error) {
       console.error("Erro ao escolher companheiro:", error);
       await message.reply("Desculpe, ocorreu um erro ao escolher seu companheiro. Tente novamente mais tarde.");
+    }
+  }
+
+  static async handleTrade(client, message, senderName, args) {
+    if (args.length < 2) {
+      await message.reply("Uso correto: !trade @usuário [nome do Pokémon]");
+      return;
+    }
+
+    // Extrair o número do usuário marcado
+    const mentionedUser = await message.getMentions();
+    if (mentionedUser.length === 0) {
+      await message.reply("Por favor, marque o usuário com quem deseja trocar.");
+      return;
+    }
+    const receiverNumber = mentionedUser[0].id.user;
+
+    // Obter o chat
+    const chat = await message.getChat();
+    
+    // Verificar se é um grupo
+    if (!chat.isGroup) {
+      await message.reply("Este comando só pode ser usado em grupos.");
+      return;
+    }
+
+    // Obter o nome do usuário a partir do número
+    const receiver = chat.participants.find(p => p.id.user === receiverNumber);
+    
+    if (!receiver) {
+      await message.reply("Não foi possível encontrar o usuário marcado neste chat.");
+      return;
+    }
+
+    const receiverName = receiver.pushname || receiver.name || receiverNumber;
+
+    // Extrair o nome do Pokémon (tudo após a menção do usuário)
+    const pokemonName = message.body.split('@')[1].split(' ').slice(1).join(' ').trim();
+
+    if (!pokemonName) {
+      await message.reply("Por favor, especifique o nome do Pokémon que deseja trocar.");
+      return;
+    }
+
+    try {
+      const result = await initiateTrade(senderName, receiverName, pokemonName);
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        await message.reply(result.message);
+        // Notificar o receptor da troca
+        await client.sendMessage(receiver.id._serialized, 
+          `${senderName} quer trocar um ${result.pokemonName} com você. Use !accepttrade [nome do seu Pokémon] para aceitar ou !rejecttrade para recusar.`);
+      }
+    } catch (error) {
+      console.error("Erro ao iniciar troca:", error);
+      await message.reply("Ocorreu um erro ao iniciar a troca. Tente novamente mais tarde.");
+    }
+  }
+
+  static async handleAcceptTrade(client, message, senderName, args) {
+    if (args.length < 1) {
+      await message.reply("Uso correto: !accepttrade [nome do Pokémon que você oferece]");
+      return;
+    }
+
+    const respondPokemonName = args.join(' ');
+
+    try {
+      const pendingTrade = await getPendingTradeForUser(senderName);
+      if (!pendingTrade) {
+        await message.reply("Você não tem nenhuma proposta de troca pendente.");
+        return;
+      }
+
+      const result = await respondToTrade(senderName, pendingTrade.id, true, respondPokemonName);
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        await message.reply(result.message);
+        // Notificar o iniciador da troca
+        const chat = await message.getChat();
+        const initiator = chat.participants.find(p => p.id.user === pendingTrade.initiator);
+        if (initiator) {
+          await client.sendMessage(initiator.id._serialized, 
+            `${senderName} aceitou sua proposta de troca! Você recebeu um ${respondPokemonName} em troca do seu ${pendingTrade.pokemonOffered}.`);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao aceitar troca:", error);
+      await message.reply("Ocorreu um erro ao aceitar a troca. Tente novamente mais tarde.");
+    }
+  }
+
+  static async handleRejectTrade(client, message, senderName) {
+    try {
+      const pendingTrade = await getPendingTradeForUser(senderName);
+      if (!pendingTrade) {
+        await message.reply("Você não tem nenhuma proposta de troca pendente.");
+        return;
+      }
+
+      const result = await respondToTrade(senderName, pendingTrade.id, false);
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        await message.reply(result.message);
+        // Notificar o iniciador da troca
+        const chat = await message.getChat();
+        const initiator = chat.participants.find(p => p.id.user === pendingTrade.initiator);
+        if (initiator) {
+          await client.sendMessage(initiator.id._serialized, 
+            `${senderName} recusou sua proposta de troca para o Pokémon ${pendingTrade.pokemonOffered}.`);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao rejeitar troca:", error);
+      await message.reply("Ocorreu um erro ao rejeitar a troca. Tente novamente mais tarde.");
+    }
+  }
+
+  static async handlePendingTrades(client, message, senderName) {
+    try {
+      const pendingTrades = await getPendingTradesForUser(senderName);
+      if (pendingTrades.error) {
+        await message.reply(pendingTrades.error);
+        return;
+      }
+
+      if (pendingTrades.length === 0) {
+        await message.reply("Você não tem nenhuma troca pendente.");
+        return;
+      }
+
+      let replyMessage = "Suas trocas pendentes:\n\n";
+      pendingTrades.forEach((trade, index) => {
+        replyMessage += `${index + 1}. ${trade.isInitiator ? 'Você ofereceu' : 'Você recebeu uma oferta de'} ${trade.pokemonOffered} ${trade.isInitiator ? 'para' : 'de'} ${trade.isInitiator ? trade.receiver : trade.initiator}\n`;
+      });
+
+      await message.reply(replyMessage);
+    } catch (error) {
+      console.error("Erro ao listar trocas pendentes:", error);
+      await message.reply("Ocorreu um erro ao listar as trocas pendentes. Tente novamente mais tarde.");
     }
   }
 
