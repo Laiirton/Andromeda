@@ -11,6 +11,19 @@ Se você tentar pedir algo que seja considerado contra os direitos humanos ele n
 *!nsfw*: 'Para exibir os comandos NSFW.'
 *!img*: 'Envia a imagem original de uma figurinha. Responda a uma figurinha com este comando.'
 *!delete*: 'Para pedir que ele delete a mensagem enviada.'
+
+*Sistema de Troca de Pokémon:*
+*!trade @usuário [nome do Pokémon]*: 'Inicia uma proposta de troca com outro usuário.'
+*!accepttrade [nome do Pokémon]*: 'Aceita uma proposta de troca pendente, oferecendo um Pokémon em troca.'
+*!rejecttrade*: 'Recusa uma proposta de troca pendente.'
+*!pendingtrades*: 'Lista todas as suas trocas de Pokémon pendentes.'
+
+Observações sobre as trocas:
+- As trocas só podem ser iniciadas em grupos.
+- Você só pode ter uma proposta de troca pendente por vez.
+- Você só pode trocar Pokémon que possui em sua coleção.
+- Após iniciar uma troca, o outro usuário receberá uma notificação e poderá aceitar ou recusar.
+- As trocas pendentes expiram após 24 horas.
 `;
 
 const menuNSFW = `
