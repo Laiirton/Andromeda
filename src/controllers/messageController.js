@@ -116,7 +116,15 @@ class MessageController {
       if (result.error) {
         await message.reply(result.error);
       } else {
-        const media = await MessageMedia.fromUrl(result.imageUrl);
+        let media;
+        if (result.imageUrl.startsWith('http')) {
+          media = await MessageMedia.fromUrl(result.imageUrl);
+        } else {
+          // Se a imagem for local, leia o arquivo
+          const fs = await import('fs/promises');
+          const buffer = await fs.readFile(result.imageUrl);
+          media = new MessageMedia('image/jpeg', buffer.toString('base64'), `${result.name}.jpg`);
+        }
         const shinyStatus = result.isShiny ? "✨ Shiny ✨" : "normal";
         let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}!\nCapturas restantes: ${result.capturesRemaining}`;
         

@@ -123,6 +123,23 @@ async function fetchPokemonFromPokeAPI(id) {
   }
 }
 
+async function getCompanionProgress(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('companions')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle(); // Usa maybeSingle() em vez de single()
+
+    if (error) throw error;
+
+    return data; // Pode ser null se não encontrar nenhum companheiro
+  } catch (error) {
+    console.error('Erro ao obter progresso do companheiro:', error);
+    return null;
+  }
+}
+
 export async function getRandomPokemonNameAndImage(senderName) {
   try {
     const userId = await getOrCreateUser(senderName);
@@ -181,6 +198,9 @@ export async function getRandomPokemonNameAndImage(senderName) {
 
     // Atualiza o progresso do companheiro
     const companion = await getCompanionProgress(userId);
+    let companionEvolution = null;
+    let companionImage = null;
+
     if (companion) {
       companion.capture_count += 1;
       await supabase
@@ -197,21 +217,21 @@ export async function getRandomPokemonNameAndImage(senderName) {
           console.log(evolutionResult.message);
         } else {
           console.log(`Companheiro evoluiu para ${evolutionResult.evolutionName}`);
-          // Adiciona uma mensagem sobre a evolução do companheiro
-          return {
-            name,
-            imageUrl,
-            capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count,
-            isShiny,
-            companionEvolution: `Seu companheiro evoluiu para ${evolutionResult.evolutionName}!`,
-            companionImage: evolutionResult.evolutionImage
-          };
+          companionEvolution = `Seu companheiro evoluiu para ${evolutionResult.evolutionName}!`;
+          companionImage = evolutionResult.evolutionImage;
         }
       }
     }
 
     console.log(`Novo Pokémon capturado: ${name} (${isShiny ? 'Shiny' : 'Normal'}). Capturas restantes: ${CAPTURE_LIMIT - captureInfo.capture_count}`);
-    return { name, imageUrl, capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count, isShiny };
+    return { 
+      name, 
+      imageUrl, 
+      capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count, 
+      isShiny,
+      companionEvolution,
+      companionImage
+    };
   } catch (error) {
     console.error('Erro ao obter Pokémon:', error);
     return { error: error.message || 'Erro inesperado ao obter Pokémon' };
@@ -457,23 +477,6 @@ async function selectCompanion(userId, companionName) {
   } catch (error) {
     console.error('Erro ao selecionar companheiro:', error);
     return { error: error.message || 'Erro ao selecionar companheiro' };
-  }
-}
-
-async function getCompanionProgress(userId) {
-  try {
-    const { data, error } = await supabase
-      .from('companions')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-
-    if (error) throw error;
-
-    return data;
-  } catch (error) {
-    console.error('Erro ao obter progresso do companheiro:', error);
-    return null;
   }
 }
 
