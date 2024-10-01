@@ -1,0 +1,23 @@
+{
+  "rowlet": ["dartrix", "decidueye"],
+  "litten": ["torracat", "incineroar"],
+  "popplio": ["brionne", "primarina"],
+  "pikipek": ["trumbeak", "toucannon"],
+  "yungoos": ["gumshoos"],
+  "grubbin": ["charjabug", "vikavolt"],
+  "crabrawler": ["crabominable"],
+  "cutiefly": ["ribombee"],
+  "rockruff": ["lycanroc"],
+  "mareanie": ["toxapex"],
+  "mudbray": ["mudsdale"],
+  "dewpider": ["araquanid"],
+  "fomantis": ["lurantis"],
+  "morelull": ["shiinotic"],
+  "salandit": ["salazzle"],
+  "stufful": ["bewear"],
+  "bounsweet": ["steenee", "tsareena"],
+  "wimpod": ["golisopod"],
+  "sandygast": ["palossand"],
+  "jangmoo": ["hakamo-o", "kommoo"],
+  "poipole": ["naganadel"]
+}
