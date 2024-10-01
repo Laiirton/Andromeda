@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createCanvas, loadImage } from 'canvas';
 import axios from 'axios';
 import fs from 'fs';
+import path from 'path';
 
 // Configuração do Supabase
 const supabase = createClient(
@@ -11,7 +12,7 @@ const supabase = createClient(
 );
 
 const CAPTURE_LIMIT = 5;
-const COOLDOWN_PERIOD = 60 * 60 * 2000; // 1 hora em milissegundos
+const COOLDOWN_PERIOD = 60 * 60 * 2000; 
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
 const SHINY_CHANCE = 1 / 4096; // Chance de 1 em 4096 para um Pokémon ser shiny
@@ -177,6 +178,37 @@ export async function getRandomPokemonNameAndImage(senderName) {
     captureInfo.last_capture_time = currentTime.toISOString();
     await updateUserCaptureInfo(userId, captureInfo.capture_count, captureInfo.last_capture_time);
 
+    // Atualiza o progresso do companheiro
+    const companion = await getCompanionProgress(userId);
+    if (companion) {
+      companion.capture_count += 1;
+      await supabase
+        .from('companions')
+        .update({ capture_count: companion.capture_count })
+        .eq('user_id', userId);
+
+      // Verifica se o companheiro pode evoluir
+      if (companion.capture_count >= 10) { // Supondo que 10 capturas são necessárias para evoluir
+        const evolutionResult = await evolveCompanion(userId);
+        if (evolutionResult.error) {
+          console.error('Erro ao evoluir companheiro:', evolutionResult.error);
+        } else if (evolutionResult.message) {
+          console.log(evolutionResult.message);
+        } else {
+          console.log(`Companheiro evoluiu para ${evolutionResult.evolutionName}`);
+          // Adiciona uma mensagem sobre a evolução do companheiro
+          return {
+            name,
+            imageUrl,
+            capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count,
+            isShiny,
+            companionEvolution: `Seu companheiro evoluiu para ${evolutionResult.evolutionName}!`,
+            companionImage: evolutionResult.evolutionImage
+          };
+        }
+      }
+    }
+
     console.log(`Novo Pokémon capturado: ${name} (${isShiny ? 'Shiny' : 'Normal'}). Capturas restantes: ${CAPTURE_LIMIT - captureInfo.capture_count}`);
     return { name, imageUrl, capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count, isShiny };
   } catch (error) {
@@ -185,29 +217,48 @@ export async function getRandomPokemonNameAndImage(senderName) {
   }
 }
 
-export async function getUserPokemon(senderName) {
+export async function getUserPokemon(senderName, page = 1, itemsPerPage = 40) {
   try {
     const userId = await getOrCreateUser(senderName);
     if (!userId) throw new Error('Usuário não encontrado');
 
+    // Obter o total de Pokémon do usuário
+    const { count, error: countError } = await supabase
+      .from('pokemon_generated')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if (countError) throw countError;
+
+    // Calcular o total de páginas
+    const totalPages = Math.ceil(count / itemsPerPage);
+
+    // Ajustar a página se necessário
+    page = Math.max(1, Math.min(page, totalPages));
+
+    // Obter os Pokémon para a página atual
     const { data, error } = await supabase
       .from('pokemon_generated')
-      .select('pokemon_name, pokemon_image_url')
+      .select('pokemon_name, pokemon_image_url, is_shiny')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .range((page - 1) * itemsPerPage, page * itemsPerPage - 1);
 
     if (error) throw error;
 
-    console.log(`Pokémon obtidos para o usuário ${senderName}:`, data);
+    console.log(`Pokémon obtidos para o usuário ${senderName} (página ${page}):`, data);
 
     if (data.length === 0) {
       return { error: 'Nenhum Pokémon capturado ainda' };
     }
 
-    const pokedexImage = await createPokedexImage(data, senderName);
+    const pokedexImage = await createPokedexImage(data, senderName, page, totalPages);
+
     return { 
-      pokedexImage,
-      pokemonCount: data.length
+      pokedexImages: [pokedexImage],
+      pokemonCount: count,
+      currentPage: page,
+      totalPages: totalPages
     };
   } catch (error) {
     console.error('Erro ao obter Pokémon do usuário:', error);
@@ -215,7 +266,7 @@ export async function getUserPokemon(senderName) {
   }
 }
 
-async function createPokedexImage(pokemonList, username) {
+async function createPokedexImage(pokemonList, username, currentPage, totalPages) {
   const MAX_IMAGE_SIZE = 15 * 1024 * 1024; // 15MB em bytes
   const BACKGROUND_WIDTH = 3000;
   const BACKGROUND_HEIGHT = 2000;
@@ -253,7 +304,7 @@ async function createPokedexImage(pokemonList, username) {
     ctx.textBaseline = 'top';
     ctx.strokeStyle = 'black';
     ctx.lineWidth = 8;
-    const title = `Pokédex de ${username}`;
+    const title = `Pokédex de ${username} - Página ${currentPage} de ${totalPages}`;
     ctx.strokeText(title, CANVAS_WIDTH / 2, 40);
     ctx.fillText(title, CANVAS_WIDTH / 2, 40);
 
@@ -334,4 +385,178 @@ async function createPokedexImage(pokemonList, username) {
 
   console.log(`Tamanho final da imagem: ${imageBuffer.length} bytes`);
   return imageBuffer;
+}
+
+async function selectCompanion(userId, companionName) {
+  try {
+    // Verifica se o usuário já tem um companheiro
+    const { data: existingCompanion, error: checkError } = await supabase
+      .from('companions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') throw checkError;
+
+    if (existingCompanion) {
+      return { error: 'Você já tem um companheiro selecionado.' };
+    }
+
+    // Verifica se o Pokémon está na Pokédex do usuário
+    const { data: userPokemon, error: pokemonError } = await supabase
+      .from('pokemon_generated')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('pokemon_name', companionName.toLowerCase())
+      .single();
+
+    if (pokemonError) throw pokemonError;
+
+    if (!userPokemon) {
+      return { error: 'Você ainda não capturou este Pokémon. Capture-o primeiro para escolhê-lo como companheiro.' };
+    }
+
+    // Insere o novo companheiro
+    const { data, error } = await supabase
+      .from('companions')
+      .insert([{ 
+        user_id: userId, 
+        companion_name: companionName.toLowerCase(),
+        evolution_stage: 1,
+        capture_count: 0
+      }]);
+
+    if (error) throw error;
+
+    console.log('Companheiro selecionado com sucesso:', { userId, companionName });
+    return { 
+      userId, 
+      companionName: companionName.toLowerCase(),
+      companionImage: userPokemon.pokemon_image_url // Adicionando a URL da imagem
+    };
+  } catch (error) {
+    console.error('Erro ao selecionar companheiro:', error);
+    return { error: error.message || 'Erro ao selecionar companheiro' };
+  }
+}
+
+async function getCompanionProgress(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('companions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) throw error;
+
+    return data;
+  } catch (error) {
+    console.error('Erro ao obter progresso do companheiro:', error);
+    return null;
+  }
+}
+
+async function evolveCompanion(userId) {
+  try {
+    const companion = await getCompanionProgress(userId);
+    if (!companion) throw new Error('Companheiro não encontrado');
+
+    const newStage = companion.evolution_stage + 1;
+
+    const evolutionName = getEvolutionName(companion.companion_name, newStage);
+    if (!evolutionName) {
+      console.log('Companheiro já está na sua forma final');
+      return { message: 'Seu companheiro já está na sua forma final!' };
+    }
+
+    // Busca a imagem da evolução na PokeAPI
+    const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${evolutionName.toLowerCase()}`);
+    const evolutionImage = response.data.sprites.other['official-artwork'].front_default || response.data.sprites.front_default;
+
+    // Atualiza o companheiro
+    const { data, error } = await supabase
+      .from('companions')
+      .update({ 
+        evolution_stage: newStage, 
+        capture_count: 0, 
+        companion_name: evolutionName,
+        companion_image: evolutionImage
+      })
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    // Adiciona a evolução à Pokédex do usuário
+    const { error: pokemonError } = await supabase
+      .from('pokemon_generated')
+      .insert([{ 
+        user_id: userId, 
+        pokemon_name: evolutionName.toLowerCase(), 
+        pokemon_image_url: evolutionImage,
+        is_shiny: false // Assumimos que evoluções não são shiny por padrão
+      }]);
+
+    if (pokemonError) throw pokemonError;
+
+    console.log('Companheiro evoluído com sucesso:', { userId, newStage, evolutionName, evolutionImage });
+    return { userId, newStage, evolutionName, evolutionImage };
+  } catch (error) {
+    console.error('Erro ao evoluir companheiro:', error);
+    return { error: error.message || 'Erro ao evoluir companheiro' };
+  }
+}
+
+async function loadEvolutions() {
+  const evolutions = {};
+  const generations = 9; // Supondo que você tenha 9 gerações
+
+  for (let i = 1; i <= generations; i++) {
+    const filePath = path.join(`./assets/pokemons_evolutions/generation_${i}.txt`);
+    const data = fs.readFileSync(filePath, 'utf8');
+    const generationEvolutions = JSON.parse(data);
+    Object.assign(evolutions, generationEvolutions);
+  }
+
+  return evolutions;
+}
+
+let evolutionsData = null;
+
+// Carrega os dados de evolução ao iniciar o módulo
+(async () => {
+  evolutionsData = await loadEvolutions();
+})();
+
+function getEvolutionName(companionName, stage) {
+  if (!evolutionsData) {
+    console.error('Dados de evolução não carregados');
+    return null;
+  }
+
+  const evolutionStages = evolutionsData[companionName.toLowerCase()];
+  if (!evolutionStages || stage > evolutionStages.length) return null;
+
+  return evolutionStages[stage - 1];
+}
+
+// Adicione esta nova função de exportação
+export async function chooseCompanion(senderName, companionName) {
+  try {
+    const userId = await getOrCreateUser(senderName);
+    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const result = await selectCompanion(userId, companionName);
+    if (result.error) {
+      return { error: result.error };
+    }
+
+    return {
+      message: `Parabéns! Você escolheu ${result.companionName} como seu companheiro!`,
+      imageUrl: result.companionImage // Adicionando a URL da imagem à resposta
+    };
+  } catch (error) {
+    console.error('Erro ao escolher companheiro:', error);
+    return { error: error.message || 'Erro inesperado ao escolher companheiro' };
+  }
 }
