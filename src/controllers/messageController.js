@@ -305,16 +305,6 @@ class MessageController {
       return;
     }
 
-    // Obter o nome do usuário a partir do número
-    const receiver = chat.participants.find(p => p.id.user === receiverNumber);
-    
-    if (!receiver) {
-      await message.reply("Não foi possível encontrar o usuário marcado neste chat.");
-      return;
-    }
-
-    const receiverName = receiver.pushname || receiver.name || receiverNumber;
-
     // Extrair o nome do Pokémon (tudo após a menção do usuário)
     const pokemonName = message.body.split('@')[1].split(' ').slice(1).join(' ').trim();
 
@@ -324,14 +314,21 @@ class MessageController {
     }
 
     try {
-      const result = await initiateTrade(senderName, receiverName, pokemonName);
+      const senderNumber = message.author || message.from.split('@')[0];
+      const senderContact = await message.getContact();
+      const senderUsername = senderContact.pushname || senderName;
+      
+      const receiverContact = await client.getContactById(mentionedUser[0].id._serialized);
+      const receiverUsername = receiverContact.pushname || receiverNumber;
+
+      const result = await initiateTrade(senderUsername, senderNumber, receiverUsername, receiverNumber, pokemonName);
       if (result.error) {
         await message.reply(result.error);
       } else {
         await message.reply(result.message);
         // Notificar o receptor da troca
-        await client.sendMessage(receiver.id._serialized, 
-          `${senderName} quer trocar um ${result.pokemonName} com você. Use !accepttrade [nome do seu Pokémon] para aceitar ou !rejecttrade para recusar.`);
+        await client.sendMessage(mentionedUser[0].id._serialized, 
+          `${senderUsername} quer trocar um ${result.pokemonName} com você. Use !accepttrade [nome do seu Pokémon] para aceitar ou !rejecttrade para recusar.`);
       }
     } catch (error) {
       console.error("Erro ao iniciar troca:", error);
