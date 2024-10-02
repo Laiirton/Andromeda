@@ -7,37 +7,52 @@ export const supabase = createClient(
 
 export async function getOrCreateUser(username, phoneNumber) {
   try {
-    // Primeiro, tenta encontrar o usuário pelo número de telefone ou nome de usuário
+    // Limpa o número de telefone, removendo caracteres não numéricos
+    const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+
+    if (!cleanPhoneNumber || cleanPhoneNumber.length < 10) {
+      console.error('Número de telefone inválido:', phoneNumber);
+      return null;
+    }
+
+    // Primeiro, tenta encontrar o usuário pelo número de telefone limpo
     let { data: user, error } = await supabase
       .from('users')
       .select('id, username, phone_number')
-      .or(`phone_number.eq.${phoneNumber},username.ilike.${username}`)
-      .maybeSingle();
+      .eq('phone_number', cleanPhoneNumber)
+      .single();
 
-    if (error) throw error;
+    if (error && error.code !== 'PGRST116') throw error;
 
     if (!user) {
-      // Se não encontrar, cria um novo usuário
-      const cleanUsername = username.replace(/[^a-zA-Z0-9]/g, '');
-      const { data: newUser, error: insertError } = await supabase
+      // Se não encontrar, cria um novo usuário com o nome fornecido pelo WhatsApp
+      const cleanUsername = username ? username.replace(/[^a-zA-Z0-9\s]/g, '').trim().slice(0, 50) : 'Usuário WhatsApp';
+      
+      ({ data: user, error } = await supabase
         .from('users')
-        .insert({ username: cleanUsername, phone_number: phoneNumber })
+        .insert({ username: cleanUsername, phone_number: cleanPhoneNumber })
         .select('id, username, phone_number')
-        .single();
+        .single());
 
-      if (insertError) throw insertError;
-      user = newUser;
-    } else if (user.phone_number !== phoneNumber) {
-      // Atualiza o número de telefone se for diferente
-      const { data: updatedUser, error: updateError } = await supabase
+      if (error) {
+        if (error.code === '23505') { // Código de erro para violação de unicidade
+          console.error('Usuário já existe com este número de telefone');
+          return null;
+        }
+        throw error;
+      }
+    } else if (user.username !== username) {
+      // Atualiza o nome de usuário se for diferente do fornecido pelo WhatsApp
+      const cleanUsername = username ? username.replace(/[^a-zA-Z0-9\s]/g, '').trim().slice(0, 50) : user.username;
+      
+      ({ data: user, error } = await supabase
         .from('users')
-        .update({ phone_number: phoneNumber })
+        .update({ username: cleanUsername })
         .eq('id', user.id)
         .select('id, username, phone_number')
-        .single();
+        .single());
 
-      if (updateError) throw updateError;
-      user = updatedUser;
+      if (error) throw error;
     }
 
     return user;
