@@ -194,12 +194,12 @@ export async function getUserPokemon(senderName, phoneNumber, page = 1, itemsPer
   }
 }
 
-export async function getUserCaptureStatus(senderName) {
+export async function getUserCaptureStatus(senderName, phoneNumber) {
   try {
-    const userId = await getOrCreateUser(senderName);
-    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const remainingCaptures = await getRemainingCaptures(userId, senderName);
+    const remainingCaptures = await getRemainingCaptures(user.id, user.username);
     return { remainingCaptures };
   } catch (error) {
     console.error('Erro ao obter status de captura do usuário:', error);
@@ -207,12 +207,12 @@ export async function getUserCaptureStatus(senderName) {
   }
 }
 
-export async function tradeForCaptures(senderName) {
+export async function tradeForCaptures(senderName, phoneNumber) {
   try {
-    const userId = await getOrCreateUser(senderName);
-    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const result = await tradePokemonForCaptures(userId, senderName);
+    const result = await tradePokemonForCaptures(user.id, user.username);
     return result;
   } catch (error) {
     console.error('Erro ao trocar Pokémon por capturas:', error);
@@ -220,12 +220,12 @@ export async function tradeForCaptures(senderName) {
   }
 }
 
-export async function getUserTradeStatus(senderName) {
+export async function getUserTradeStatus(senderName, phoneNumber) {
   try {
-    const userId = await getOrCreateUser(senderName);
-    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const status = await getTradeStatus(userId, senderName);
+    const status = await getTradeStatus(user.id, user.username);
     return status;
   } catch (error) {
     console.error('Erro ao obter status de trocas do usuário:', error);
