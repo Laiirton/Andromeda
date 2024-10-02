@@ -15,12 +15,12 @@ async function cleanupExpiredTrades() {
   if (error) console.error('Erro ao limpar trocas expiradas:', error);
 }
 
-export async function initiateTrade(initiatorUsername, receiverUsername, pokemonName) {
+export async function initiateTrade(initiatorUsername, initiatorPhoneNumber, receiverUsername, receiverPhoneNumber, pokemonName) {
   try {
     await cleanupExpiredTrades();
 
-    const initiator = await getOrCreateUser(initiatorUsername);
-    const receiver = await getOrCreateUser(receiverUsername);
+    const initiator = await getOrCreateUser(initiatorUsername, initiatorPhoneNumber);
+    const receiver = await getOrCreateUser(receiverUsername, receiverPhoneNumber);
 
     if (!initiator || !receiver) {
       throw new Error('Um dos usuários não foi encontrado');
@@ -66,9 +66,9 @@ export async function initiateTrade(initiatorUsername, receiverUsername, pokemon
   }
 }
 
-export async function respondToTrade(responderUsername, tradeId, acceptTrade, respondPokemonName) {
+export async function respondToTrade(responderUsername, responderPhoneNumber, tradeId, acceptTrade, respondPokemonName) {
   try {
-    const responder = await getOrCreateUser(responderUsername);
+    const responder = await getOrCreateUser(responderUsername, responderPhoneNumber);
 
     if (!responder) {
       throw new Error('Usuário não encontrado');
@@ -161,9 +161,9 @@ async function swapPokemons(initiatorId, receiverId, initiatorPokemonId, receive
   if (swapError) throw swapError;
 }
 
-export async function getPendingTradeForUser(username) {
+export async function getPendingTradeForUser(username, phoneNumber) {
   try {
-    const user = await getOrCreateUser(username);
+    const user = await getOrCreateUser(username, phoneNumber);
 
     if (!user) {
       throw new Error('Usuário não encontrado');
@@ -207,9 +207,9 @@ export async function getPendingTradeForUser(username) {
   }
 }
 
-export async function getPendingTradesForUser(username) {
+export async function getPendingTradesForUser(username, phoneNumber) {
   try {
-    const user = await getOrCreateUser(username);
+    const user = await getOrCreateUser(username, phoneNumber);
     if (!user) throw new Error('Usuário não encontrado');
 
     await cleanupExpiredTrades();
