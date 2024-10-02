@@ -12,6 +12,7 @@ import {
 } from './database.js';
 import { getCompanionProgress, evolveCompanion } from './companion.js';
 import { createPokedexImage } from './pokedex.js';
+import { checkAndUpdateCaptureLimit, getRemainingCaptures, tradePokemonForCaptures, getTradeStatus } from './captureLimits.js';
 
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
@@ -35,6 +36,15 @@ export async function getRandomPokemonNameAndImage(senderName) {
   try {
     const userId = await getOrCreateUser(senderName);
     if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const { canCapture, remainingCaptures } = await checkAndUpdateCaptureLimit(userId, senderName);
+
+    if (!canCapture) {
+      return { 
+        error: 'Você atingiu o limite diário de capturas. Tente novamente amanhã!',
+        remainingCaptures
+      };
+    }
 
     let pokemon = null;
     let isShiny = false;
@@ -114,7 +124,8 @@ export async function getRandomPokemonNameAndImage(senderName) {
       isLegendary,
       isMythical,
       companionEvolution,
-      companionImage
+      companionImage,
+      remainingCaptures
     };
   } catch (error) {
     console.error('Erro ao obter Pokémon:', error);
@@ -180,5 +191,44 @@ export async function getUserPokemon(senderName, page = 1, itemsPerPage = 40) {
   } catch (error) {
     console.error('Erro ao obter Pokémon do usuário:', error);
     return { error: error.message || 'Erro inesperado ao obter Pokémon do usuário' };
+  }
+}
+
+export async function getUserCaptureStatus(senderName) {
+  try {
+    const userId = await getOrCreateUser(senderName);
+    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const remainingCaptures = await getRemainingCaptures(userId, senderName);
+    return { remainingCaptures };
+  } catch (error) {
+    console.error('Erro ao obter status de captura do usuário:', error);
+    return { error: error.message || 'Erro inesperado ao obter status de captura' };
+  }
+}
+
+export async function tradeForCaptures(senderName) {
+  try {
+    const userId = await getOrCreateUser(senderName);
+    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const result = await tradePokemonForCaptures(userId, senderName);
+    return result;
+  } catch (error) {
+    console.error('Erro ao trocar Pokémon por capturas:', error);
+    return { error: error.message || 'Erro inesperado ao trocar Pokémon por capturas' };
+  }
+}
+
+export async function getUserTradeStatus(senderName) {
+  try {
+    const userId = await getOrCreateUser(senderName);
+    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const status = await getTradeStatus(userId, senderName);
+    return status;
+  } catch (error) {
+    console.error('Erro ao obter status de trocas do usuário:', error);
+    return { error: error.message || 'Erro inesperado ao obter status de trocas' };
   }
 }
