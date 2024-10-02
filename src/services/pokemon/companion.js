@@ -135,12 +135,12 @@ export async function evolveCompanion(userId) {
   }
 }
 
-export async function chooseCompanion(senderName, companionName) {
+export async function chooseCompanion(senderName, phoneNumber, companionName) {
   try {
-    const userId = await getOrCreateUser(senderName);
-    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const result = await selectCompanion(userId, companionName);
+    const result = await selectCompanion(user.id, companionName);
     if (result.error) {
       return { error: result.error };
     }
