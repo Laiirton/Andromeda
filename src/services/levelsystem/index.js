@@ -1,5 +1,5 @@
 import { toggleLevelSystem, isLevelSystemActive, processMessage, getUserLevel, getTopUsers } from './database.js';
-import { handleLevelCommand, handleRankCommand, handleTopRankCommand, handleLevelSystemToggle } from './commands.js';
+import { handleLevelCommand, handleTopRankCommand, handleLevelSystemToggle } from './commands.js';
 
 export {
   toggleLevelSystem,
@@ -8,7 +8,6 @@ export {
   getUserLevel,
   getTopUsers,
   handleLevelCommand,
-  handleRankCommand,
   handleTopRankCommand,
   handleLevelSystemToggle
 };
