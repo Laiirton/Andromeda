@@ -10,6 +10,7 @@ Se você tentar pedir algo que seja considerado contra os direitos humanos ele n
 *!img*: 'Envia a imagem original de uma figurinha. Responda a uma figurinha com este comando.'
 *!delete*: 'Para pedir que ele delete a mensagem enviada.'
 
+*!sacrificar [nome do pokemon]*: 'Sacrifica um Pokémon para ganhar 2 capturas extras. Você pode fazer até 5 sacrifícios por dia.'
 
 Observações sobre as trocas:
 - As trocas só podem ser iniciadas em grupos.
@@ -55,10 +56,11 @@ const pokemonSystemInfo = `
    - Veja trocas pendentes com !pendingtrades.
    - As trocas expiram após 24 horas.
 
-5. *Trocas por Capturas:*
-   - Use !tradecaptures para trocar um Pokémon por 2 capturas extras.
-   - Você pode fazer até 5 trocas por dia.
-   - Verifique seu status de trocas com !tradestatus.
+5. *Sistema de Sacrifício:*
+   - Use !sacrificar [nome do Pokémon] para sacrificar um Pokémon.
+   - Cada sacrifício concede 2 capturas extras.
+   - Você pode fazer até 5 sacrifícios por dia.
+   - Verifique seu status de sacrifícios com !sacrificiostatus.
 
 6. *Raridades:*
    - Pokémon comuns: 100% de chance de aparecer.
