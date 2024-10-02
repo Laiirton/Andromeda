@@ -19,14 +19,29 @@ export async function initiateTrade(initiatorUsername, initiatorPhoneNumber, rec
   try {
     await cleanupExpiredTrades();
 
+    // Remover o '@c.us' do número de telefone do iniciador, se presente
+    initiatorPhoneNumber = initiatorPhoneNumber.replace('@c.us', '');
+    
+    // Garantir que o número de telefone do receptor esteja no formato correto
+    receiverPhoneNumber = receiverPhoneNumber.replace(/\D/g, '');
+
+    console.log('Iniciando troca:', {
+      initiatorUsername,
+      initiatorPhoneNumber,
+      receiverUsername,
+      receiverPhoneNumber,
+      pokemonName
+    });
+
     const initiator = await getOrCreateUser(initiatorUsername, initiatorPhoneNumber);
     const receiver = await getOrCreateUser(receiverUsername, receiverPhoneNumber);
 
     if (!initiator || !receiver) {
-      throw new Error('Um dos usuários não foi encontrado');
+      console.error('Falha ao criar ou obter usuários:', { initiator, receiver });
+      return { error: 'Não foi possível identificar um ou ambos os usuários. Verifique se os números de telefone estão corretos.' };
     }
 
-    const pendingTrades = await getPendingTradesForUser(initiator.username);
+    const pendingTrades = await getPendingTradesForUser(initiator.username, initiator.phone_number);
     if (pendingTrades.length > 0) {
       return { error: 'Você já tem uma troca pendente. Use !pendingtrades para ver suas trocas pendentes.' };
     }
@@ -38,8 +53,9 @@ export async function initiateTrade(initiatorUsername, initiatorPhoneNumber, rec
       .ilike('pokemon_name', pokemonName)
       .limit(1);
 
-    if (pokemonError || !initiatorPokemon.length) {
-      throw new Error('Pokémon não encontrado na sua coleção');
+    if (pokemonError) throw pokemonError;
+    if (!initiatorPokemon || initiatorPokemon.length === 0) {
+      return { error: 'Pokémon não encontrado na sua coleção' };
     }
 
     const { data: trade, error: tradeError } = await supabase
@@ -55,6 +71,8 @@ export async function initiateTrade(initiatorUsername, initiatorPhoneNumber, rec
 
     if (tradeError) throw tradeError;
 
+    console.log('Troca iniciada com sucesso:', trade);
+
     return {
       message: `Proposta de troca iniciada. Aguardando resposta de ${receiver.username}.`,
       tradeId: trade.id,
@@ -62,7 +80,7 @@ export async function initiateTrade(initiatorUsername, initiatorPhoneNumber, rec
     };
   } catch (error) {
     console.error('Erro ao iniciar troca:', error);
-    return { error: error.message };
+    return { error: 'Ocorreu um erro ao iniciar a troca. Por favor, tente novamente.' };
   }
 }
 
