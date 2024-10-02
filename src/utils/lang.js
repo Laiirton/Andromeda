@@ -13,7 +13,6 @@ Se você tentar pedir algo que seja considerado contra os direitos humanos ele n
 *Sistema de Níveis:*
 *!levelsystem [on/off]*: 'Ativa ou desativa o sistema de níveis no grupo.'
 *!level*: 'Mostra seu nível atual e estatísticas.'
-*!rank*: 'Exibe o ranking dos top 10 usuários do grupo.'
 *!toprank*: 'Mostra os 5 usuários de maior nível com detalhes e fotos de perfil.'
 
 `;
