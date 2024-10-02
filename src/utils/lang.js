@@ -9,6 +9,12 @@ Se você tentar pedir algo que seja considerado contra os direitos humanos ele n
 *!nsfw*: 'Para exibir os comandos NSFW.'
 *!img*: 'Envia a imagem original de uma figurinha. Responda a uma figurinha com este comando.'
 *!delete*: 'Para pedir que ele delete a mensagem enviada.'
+
+*Sistema de Níveis:*
+*!levelsystem [on/off]*: 'Ativa ou desativa o sistema de níveis no grupo.'
+*!level*: 'Mostra seu nível atual e estatísticas.'
+*!rank*: 'Exibe o ranking dos top 10 usuários do grupo.'
+
 `;
 
 const menuNSFW = `
