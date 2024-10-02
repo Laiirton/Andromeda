@@ -1,8 +1,8 @@
 import { supabase } from './database.js';
 
-const DEFAULT_DAILY_LIMIT = 20;
-const MAX_TRADES_PER_DAY = 5;
-const CAPTURES_PER_TRADE = 2;
+const CAPTURES_PER_HOUR = 10;
+const HOUR_IN_MILLISECONDS = 60 * 60 * 1000;
+const SACRIFICE_TIME_REDUCTION = 15 * 60 * 1000; // 15 minutos em milissegundos
 
 async function getUserCaptureLimit(userId, username) {
   const { data, error } = await supabase
@@ -22,10 +22,12 @@ async function getUserCaptureLimit(userId, username) {
       .insert({ 
         user_id: userId, 
         username, 
-        daily_limit: DEFAULT_DAILY_LIMIT,
+        captures_per_hour: CAPTURES_PER_HOUR,
         extra_captures: 0,
         trades_today: 0,
-        last_trade_date: new Date().toISOString().split('T')[0]
+        last_trade_date: new Date().toISOString().split('T')[0],
+        last_capture_time: new Date().toISOString(),
+        captures_since_last_reset: 0
       })
       .select()
       .single();
@@ -66,37 +68,48 @@ async function updateUserCaptureCount(userId, username) {
     throw limitError;
   }
 
-  const currentDate = new Date().toISOString().split('T')[0];
+  const currentTime = new Date();
+  const lastCaptureTime = new Date(userLimit.last_capture_time);
+  const timeDifference = currentTime - lastCaptureTime;
 
-  if (userLimit.last_capture_date !== currentDate) {
-    // Resetar contagem diária se for um novo dia
+  if (timeDifference >= HOUR_IN_MILLISECONDS) {
+    // Resetar contagem se passou mais de uma hora
     const { error: resetError } = await supabase
       .from('user_capture_limits')
       .update({ 
-        daily_captures: 1, 
-        last_capture_date: currentDate,
-        username,
-        trades_today: 0,
-        last_trade_date: currentDate
+        captures_since_last_reset: 1, 
+        last_capture_time: currentTime.toISOString(),
+        username
       })
       .eq('user_id', userId);
 
     if (resetError) {
-      console.error('Erro ao resetar contagem diária:', resetError);
+      console.error('Erro ao resetar contagem de capturas:', resetError);
       throw resetError;
     }
 
-    return { canCapture: true, remainingCaptures: userLimit.daily_limit + userLimit.extra_captures - 1 };
+    return { 
+      canCapture: true, 
+      remainingCaptures: userLimit.captures_per_hour + userLimit.extra_captures - 1,
+      nextCaptureTime: null
+    };
   }
 
-  if (userLimit.daily_captures >= userLimit.daily_limit + userLimit.extra_captures) {
-    return { canCapture: false, remainingCaptures: 0 };
+  if (userLimit.captures_since_last_reset >= userLimit.captures_per_hour + userLimit.extra_captures) {
+    const timeUntilReset = HOUR_IN_MILLISECONDS - timeDifference;
+    const nextCaptureTime = new Date(currentTime.getTime() + timeUntilReset);
+    return { 
+      canCapture: false, 
+      remainingCaptures: 0,
+      nextCaptureTime
+    };
   }
 
   const { error: updateError } = await supabase
     .from('user_capture_limits')
     .update({ 
-      daily_captures: userLimit.daily_captures + 1,
+      captures_since_last_reset: userLimit.captures_since_last_reset + 1,
+      last_capture_time: currentTime.toISOString(),
       username
     })
     .eq('user_id', userId);
@@ -108,7 +121,8 @@ async function updateUserCaptureCount(userId, username) {
 
   return { 
     canCapture: true, 
-    remainingCaptures: userLimit.daily_limit + userLimit.extra_captures - (userLimit.daily_captures + 1) 
+    remainingCaptures: userLimit.captures_per_hour + userLimit.extra_captures - (userLimit.captures_since_last_reset + 1),
+    nextCaptureTime: null
   };
 }
 
@@ -125,73 +139,18 @@ export async function checkAndUpdateCaptureLimit(userId, username) {
 export async function getRemainingCaptures(userId, username) {
   try {
     const userLimit = await getUserCaptureLimit(userId, username);
-    const currentDate = new Date().toISOString().split('T')[0];
+    const currentTime = new Date();
+    const lastCaptureTime = new Date(userLimit.last_capture_time);
+    const timeDifference = currentTime - lastCaptureTime;
 
-    if (userLimit.last_capture_date !== currentDate) {
-      return userLimit.daily_limit + userLimit.extra_captures;
+    if (timeDifference >= HOUR_IN_MILLISECONDS) {
+      return userLimit.captures_per_hour + userLimit.extra_captures;
     }
 
-    return Math.max(0, userLimit.daily_limit + userLimit.extra_captures - userLimit.daily_captures);
+    return Math.max(0, userLimit.captures_per_hour + userLimit.extra_captures - userLimit.captures_since_last_reset);
   } catch (error) {
     console.error('Erro ao obter capturas restantes:', error);
     throw error;
-  }
-}
-
-export async function tradePokemonForCaptures(userId, username) {
-  try {
-    const userLimit = await getUserCaptureLimit(userId, username);
-    const currentDate = new Date().toISOString().split('T')[0];
-
-    if (userLimit.last_trade_date !== currentDate) {
-      userLimit.trades_today = 0;
-    }
-
-    if (userLimit.trades_today >= MAX_TRADES_PER_DAY) {
-      return { error: 'Você atingiu o limite diário de trocas.' };
-    }
-
-    const { data: userPokemon, error: pokemonError } = await supabase
-      .from('pokemon_generated')
-      .select('id')
-      .eq('user_id', userId)
-      .limit(1);
-
-    if (pokemonError || userPokemon.length === 0) {
-      return { error: 'Você não tem Pokémon disponíveis para trocar.' };
-    }
-
-    const { error: deleteError } = await supabase
-      .from('pokemon_generated')
-      .delete()
-      .eq('id', userPokemon[0].id);
-
-    if (deleteError) {
-      throw deleteError;
-    }
-
-    const { error: updateError } = await supabase
-      .from('user_capture_limits')
-      .update({ 
-        extra_captures: userLimit.extra_captures + CAPTURES_PER_TRADE,
-        trades_today: userLimit.trades_today + 1,
-        last_trade_date: currentDate
-      })
-      .eq('user_id', userId);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    return { 
-      success: true, 
-      message: `Troca realizada com sucesso! Você ganhou ${CAPTURES_PER_TRADE} capturas extras.`,
-      extraCaptures: CAPTURES_PER_TRADE,
-      remainingTrades: MAX_TRADES_PER_DAY - (userLimit.trades_today + 1)
-    };
-  } catch (error) {
-    console.error('Erro ao trocar Pokémon por capturas:', error);
-    return { error: 'Ocorreu um erro ao realizar a troca. Tente novamente mais tarde.' };
   }
 }
 
@@ -216,3 +175,52 @@ export async function getTradeStatus(userId, username) {
     throw error;
   }
 }
+
+export async function sacrificePokemon(userId, username, pokemonName) {
+  try {
+    const { data: userLimit, error: limitError } = await supabase
+      .from('user_capture_limits')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (limitError) throw limitError;
+
+    const currentTime = new Date();
+    const lastCaptureTime = new Date(userLimit.last_capture_time);
+    const timeDifference = currentTime - lastCaptureTime;
+
+    if (timeDifference < HOUR_IN_MILLISECONDS) {
+      const newLastCaptureTime = new Date(lastCaptureTime.getTime() - SACRIFICE_TIME_REDUCTION);
+      
+      const { error: updateError } = await supabase
+        .from('user_capture_limits')
+        .update({ 
+          last_capture_time: newLastCaptureTime.toISOString(),
+          username
+        })
+        .eq('user_id', userId);
+
+      if (updateError) throw updateError;
+
+      const remainingTime = HOUR_IN_MILLISECONDS - (currentTime - newLastCaptureTime);
+      const minutesRemaining = Math.ceil(remainingTime / (60 * 1000));
+
+      return {
+        success: true,
+        message: `Você sacrificou ${pokemonName} e reduziu o tempo de espera em 15 minutos.`,
+        minutesRemaining
+      };
+    } else {
+      return {
+        success: false,
+        message: "Você já pode capturar novamente. Não é necessário sacrificar um Pokémon."
+      };
+    }
+  } catch (error) {
+    console.error('Erro ao sacrificar Pokémon:', error);
+    throw error;
+  }
+}
+
+// As funções tradePokemonForCaptures e getTradeStatus permanecem inalteradas
