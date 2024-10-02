@@ -22,7 +22,9 @@ import {
   getPendingTradeForUser,
   getPendingTradesForUser,
   tradeForCaptures,
-  getUserTradeStatus
+  getUserTradeStatus,
+  sacrificePokemon,
+  getUserSacrificeStatus
 } from "../services/pokemon/index.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
@@ -88,8 +90,8 @@ class MessageController {
       accepttrade: () => this.handleAcceptTrade(client, message, senderName, args),
       rejecttrade: () => this.handleRejectTrade(client, message, senderName),
       pendingtrades: () => this.handlePendingTrades(client, message, senderName),
-      tradecaptures: () => this.handleTradeForCaptures(client, message, senderName),
-      tradestatus: () => this.handleTradeStatus(client, message, senderName),
+      sacrificar: (args) => this.handleSacrificePokemon(client, message, senderName, args),
+      sacrificiostatus: () => this.handleSacrificeStatus(client, message, senderName),
       pokesystem: () => message.reply(pokemonSystemInfo),
     };
 
@@ -421,31 +423,38 @@ class MessageController {
     }
   }
 
-  static async handleTradeForCaptures(client, message, senderName) {
+  static async handleSacrificePokemon(client, message, senderName, args) {
     try {
-      const result = await tradeForCaptures(senderName);
-      if (result.error) {
-        await message.reply(result.error);
-      } else {
-        await message.reply(result.message);
+      const phoneNumber = message.author || message.from.split('@')[0];
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      const pokemonName = args.join(' ').trim();
+      
+      if (!pokemonName) {
+        await message.reply("Por favor, especifique o nome do Pokémon que deseja sacrificar. Exemplo: !sacrificar Pikachu");
+        return;
       }
+
+      const result = await sacrificePokemon(senderName, cleanPhoneNumber, pokemonName);
+      await message.reply(result.message);
     } catch (error) {
-      console.error('Erro ao trocar Pokémon por capturas:', error);
-      await message.reply('Ocorreu um erro ao realizar a troca. Tente novamente mais tarde.');
+      console.error('Erro ao sacrificar Pokémon:', error);
+      await message.reply('Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.');
     }
   }
 
-  static async handleTradeStatus(client, message, senderName) {
+  static async handleSacrificeStatus(client, message, senderName) {
     try {
-      const status = await getUserTradeStatus(senderName);
+      const phoneNumber = message.author || message.from.split('@')[0];
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      const status = await getUserSacrificeStatus(senderName, cleanPhoneNumber);
       if (status.error) {
         await message.reply(status.error);
       } else {
-        await message.reply(`Você tem ${status.tradesAvailable} trocas disponíveis hoje e ${status.extraCaptures} capturas extras acumuladas.`);
+        await message.reply(`Você tem ${status.sacrificesAvailable} sacrifícios disponíveis hoje e ${status.extraCaptures} capturas extras acumuladas.`);
       }
     } catch (error) {
-      console.error('Erro ao obter status de trocas:', error);
-      await message.reply('Ocorreu um erro ao obter o status de trocas. Tente novamente mais tarde.');
+      console.error('Erro ao obter status de sacrifícios:', error);
+      await message.reply('Ocorreu um erro ao obter o status de sacrifícios. Tente novamente mais tarde.');
     }
   }
 
