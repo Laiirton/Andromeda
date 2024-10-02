@@ -2,6 +2,7 @@ import pkg from 'whatsapp-web.js';
 const { MessageMedia } = pkg;
 import { getUserLevel, getTopUsers, isLevelSystemActive, toggleLevelSystem } from './database.js';
 import { calculateXPForNextLevel, formatNumber } from './utils.js';
+import { generateRankingImage } from './rankingImage.js';
 
 export async function handleLevelCommand(message) {
   const chat = await message.getChat();
@@ -81,28 +82,18 @@ export async function handleTopRankCommand(client, message) {
     return;
   }
 
-  let rankMessage = "🏆 *Top 5 Usuários do Grupo* 🏆\n\n";
-  
-  for (let i = 0; i < topUsers.length; i++) {
-    const user = topUsers[i];
-    const contact = await client.getContactById(user.phone_number);
-    
-    rankMessage += `${i + 1}. *${user.username}*\n`;
-    rankMessage += `   Nível: ${user.level} | XP: ${formatNumber(user.xp)}\n`;
-    rankMessage += `   Mensagens enviadas: ${formatNumber(user.messages_sent)}\n\n`;
-
-    try {
-      const profilePic = await contact.getProfilePicUrl();
-      if (profilePic) {
-        const media = await MessageMedia.fromUrl(profilePic);
-        await message.reply(media, message.from, { caption: `Foto de perfil de ${user.username}` });
-      }
-    } catch (error) {
-      console.error(`Erro ao obter foto de perfil de ${user.username}:`, error);
-    }
+  // Adicionar URLs de avatar (você precisará implementar uma função para obter as URLs dos avatares)
+  for (const user of topUsers) {
+    user.avatarUrl = await getAvatarUrl(client, user.phone_number);
   }
 
-  await message.reply(rankMessage);
+  try {
+    const rankingImage = await generateRankingImage(topUsers);
+    await message.reply(rankingImage, message.from, { caption: "🏆 Top 5 Usuários do Grupo 🏆" });
+  } catch (error) {
+    console.error('Erro ao gerar imagem de ranking:', error);
+    await message.reply("Ocorreu um erro ao gerar o ranking. Por favor, tente novamente mais tarde.");
+  }
 }
 
 export async function handleLevelSystemToggle(message, args) {
@@ -124,5 +115,15 @@ export async function handleLevelSystemToggle(message, args) {
     await message.reply(`Sistema de níveis ${isActive ? 'ativado' : 'desativado'} para este grupo.`);
   } else {
     await message.reply("Ocorreu um erro ao alterar o status do sistema de níveis.");
+  }
+}
+
+async function getAvatarUrl(client, phoneNumber) {
+  try {
+    const contact = await client.getContactById(phoneNumber);
+    return await contact.getProfilePicUrl();
+  } catch (error) {
+    console.error('Erro ao obter URL do avatar:', error);
+    return null;
   }
 }
