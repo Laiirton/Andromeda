@@ -235,34 +235,56 @@ export async function sacrificePokemon(senderName, phoneNumber, pokemonName) {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
 
-    if (!sacrificeStatus || sacrificeStatus.last_trade_date !== today) {
-      await supabase
-        .from('user_capture_limits')
-        .upsert({
-          user_id: user.id,
-          trades_today: 1,
-          last_trade_date: today,
-          extra_captures: (sacrificeStatus ? sacrificeStatus.extra_captures : 0) + 2,
-          username: user.username
-        });
-    } else if (sacrificeStatus.trades_today >= 5) {
-      return { message: 'Você já atingiu o limite diário de 5 sacrifícios.' };
-    } else {
-      await supabase
-        .from('user_capture_limits')
-        .update({
-          trades_today: sacrificeStatus.trades_today + 1,
-          extra_captures: sacrificeStatus.extra_captures + 2
-        })
-        .eq('user_id', user.id);
+    let sacrificedPokemons = [];
+    if (sacrificeStatus && sacrificeStatus.last_trade_date === today) {
+      sacrificedPokemons = sacrificeStatus.sacrificed_pokemons || [];
     }
+
+    if (sacrificedPokemons.length >= 5) {
+      return { message: 'Você já atingiu o limite diário de 5 sacrifícios.' };
+    }
+
+    sacrificedPokemons.push(pokemonName);
+
+    const updateData = {
+      trades_today: sacrificedPokemons.length,
+      last_trade_date: today,
+      extra_captures: (sacrificeStatus ? sacrificeStatus.extra_captures : 0) + 2,
+      username: user.username,
+      sacrificed_pokemons: sacrificedPokemons
+    };
+
+    let result;
+    if (sacrificeStatus) {
+      // Atualiza o registro existente
+      result = await supabase
+        .from('user_capture_limits')
+        .update(updateData)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+    } else {
+      // Insere um novo registro
+      result = await supabase
+        .from('user_capture_limits')
+        .insert({...updateData, user_id: user.id})
+        .select()
+        .single();
+    }
+
+    if (result.error) throw result.error;
 
     await supabase
       .from('pokemon_generated')
       .delete()
       .eq('id', pokemon[0].id);
 
-    return { message: `Você sacrificou ${pokemonName} e ganhou 2 capturas extras!` };
+    console.log('Sacrifício realizado:', result.data);
+
+    return { 
+      message: `Você sacrificou ${pokemonName} e ganhou 2 capturas extras!`,
+      sacrificedPokemons
+    };
   } catch (error) {
     console.error('Erro ao sacrificar Pokémon:', error);
     return { message: 'Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.' };
@@ -288,12 +310,14 @@ export async function getUserSacrificeStatus(senderName, phoneNumber) {
     if (!sacrificeStatus || sacrificeStatus.last_trade_date !== today) {
       return {
         sacrificesAvailable: 5,
-        extraCaptures: sacrificeStatus ? sacrificeStatus.extra_captures : 0
+        extraCaptures: sacrificeStatus ? sacrificeStatus.extra_captures : 0,
+        sacrificedPokemons: []
       };
     } else {
       return {
-        sacrificesAvailable: Math.max(0, 5 - sacrificeStatus.trades_today),
-        extraCaptures: sacrificeStatus.extra_captures
+        sacrificesAvailable: Math.max(0, 5 - (sacrificeStatus.sacrificed_pokemons ? sacrificeStatus.sacrificed_pokemons.length : 0)),
+        extraCaptures: sacrificeStatus.extra_captures,
+        sacrificedPokemons: sacrificeStatus.sacrificed_pokemons || []
       };
     }
   } catch (error) {
