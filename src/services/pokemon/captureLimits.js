@@ -1,7 +1,9 @@
 import { supabase } from './database.js';
 
 const CAPTURES_PER_HOUR = 10;
+const HOURS_UNTIL_RESET = 2; // Novo: define o número de horas até o reset
 const HOUR_IN_MILLISECONDS = 60 * 60 * 1000;
+const RESET_TIME = HOURS_UNTIL_RESET * HOUR_IN_MILLISECONDS; // Novo: calcula o tempo total de reset
 const SACRIFICE_TIME_REDUCTION = 15 * 60 * 1000; // 15 minutos em milissegundos
 
 async function getUserCaptureLimit(userId, username) {
@@ -72,8 +74,8 @@ async function updateUserCaptureCount(userId, username) {
   const lastCaptureTime = new Date(userLimit.last_capture_time);
   const timeDifference = currentTime - lastCaptureTime;
 
-  if (timeDifference >= HOUR_IN_MILLISECONDS) {
-    // Resetar contagem se passou mais de uma hora
+  if (timeDifference >= RESET_TIME) {
+    // Resetar contagem se passou o tempo de reset
     const { error: resetError } = await supabase
       .from('user_capture_limits')
       .update({ 
@@ -96,7 +98,7 @@ async function updateUserCaptureCount(userId, username) {
   }
 
   if (userLimit.captures_since_last_reset >= userLimit.captures_per_hour + userLimit.extra_captures) {
-    const timeUntilReset = HOUR_IN_MILLISECONDS - timeDifference;
+    const timeUntilReset = RESET_TIME - timeDifference;
     const nextCaptureTime = new Date(currentTime.getTime() + timeUntilReset);
     return { 
       canCapture: false, 
@@ -190,7 +192,7 @@ export async function sacrificePokemon(userId, username, pokemonName) {
     const lastCaptureTime = new Date(userLimit.last_capture_time);
     const timeDifference = currentTime - lastCaptureTime;
 
-    if (timeDifference < HOUR_IN_MILLISECONDS) {
+    if (timeDifference < RESET_TIME) {
       const newLastCaptureTime = new Date(lastCaptureTime.getTime() - SACRIFICE_TIME_REDUCTION);
       
       const { error: updateError } = await supabase
@@ -203,7 +205,7 @@ export async function sacrificePokemon(userId, username, pokemonName) {
 
       if (updateError) throw updateError;
 
-      const remainingTime = HOUR_IN_MILLISECONDS - (currentTime - newLastCaptureTime);
+      const remainingTime = RESET_TIME - (currentTime - newLastCaptureTime);
       const minutesRemaining = Math.ceil(remainingTime / (60 * 1000));
 
       return {
