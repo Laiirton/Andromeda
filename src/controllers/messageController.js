@@ -435,7 +435,16 @@ class MessageController {
       }
 
       const result = await sacrificePokemon(senderName, cleanPhoneNumber, pokemonName);
-      await message.reply(result.message);
+      let replyMessage = result.message;
+
+      if (result.sacrificedPokemons) {
+        replyMessage += "\n\nPokémon sacrificados hoje:";
+        result.sacrificedPokemons.forEach((pokemon, index) => {
+          replyMessage += `\n${index + 1}. ${pokemon}`;
+        });
+      }
+
+      await message.reply(replyMessage);
     } catch (error) {
       console.error('Erro ao sacrificar Pokémon:', error);
       await message.reply('Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.');
@@ -450,7 +459,18 @@ class MessageController {
       if (status.error) {
         await message.reply(status.error);
       } else {
-        await message.reply(`Você tem ${status.sacrificesAvailable} sacrifícios disponíveis hoje e ${status.extraCaptures} capturas extras acumuladas.`);
+        let replyMessage = `Você tem ${status.sacrificesAvailable} sacrifícios disponíveis hoje e ${status.extraCaptures} capturas extras acumuladas.`;
+        
+        if (status.sacrificedPokemons && status.sacrificedPokemons.length > 0) {
+          replyMessage += "\n\nPokémons sacrificados hoje:";
+          status.sacrificedPokemons.forEach((pokemon, index) => {
+            replyMessage += `\n${index + 1}. ${pokemon}`;
+          });
+        } else {
+          replyMessage += "\n\nVocê ainda não sacrificou nenhum Pokémon hoje.";
+        }
+
+        await message.reply(replyMessage);
       }
     } catch (error) {
       console.error('Erro ao obter status de sacrifícios:', error);
