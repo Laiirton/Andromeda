@@ -207,16 +207,159 @@ export async function getUserCaptureStatus(senderName, phoneNumber) {
   }
 }
 
+export async function sacrificePokemon(senderName, phoneNumber, pokemonName) {
+  try {
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const { data: pokemon, error: pokemonError } = await supabase
+      .from('pokemon_generated')
+      .select('*')
+      .eq('user_id', user.id)
+      .ilike('pokemon_name', pokemonName)
+      .limit(1);
+
+    if (pokemonError) throw pokemonError;
+    if (!pokemon || pokemon.length === 0) {
+      return { message: `Você não possui o Pokémon ${pokemonName} em sua coleção.` };
+    }
+
+    const { data: sacrificeStatus, error: statusError } = await supabase
+      .from('user_capture_limits')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (statusError && statusError.code !== 'PGRST116') throw statusError;
+
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    if (!sacrificeStatus || sacrificeStatus.last_trade_date !== today) {
+      await supabase
+        .from('user_capture_limits')
+        .upsert({
+          user_id: user.id,
+          trades_today: 1,
+          last_trade_date: today,
+          extra_captures: (sacrificeStatus ? sacrificeStatus.extra_captures : 0) + 2,
+          username: user.username
+        });
+    } else if (sacrificeStatus.trades_today >= 5) {
+      return { message: 'Você já atingiu o limite diário de 5 sacrifícios.' };
+    } else {
+      await supabase
+        .from('user_capture_limits')
+        .update({
+          trades_today: sacrificeStatus.trades_today + 1,
+          extra_captures: sacrificeStatus.extra_captures + 2
+        })
+        .eq('user_id', user.id);
+    }
+
+    await supabase
+      .from('pokemon_generated')
+      .delete()
+      .eq('id', pokemon[0].id);
+
+    return { message: `Você sacrificou ${pokemonName} e ganhou 2 capturas extras!` };
+  } catch (error) {
+    console.error('Erro ao sacrificar Pokémon:', error);
+    return { message: 'Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.' };
+  }
+}
+
+export async function getUserSacrificeStatus(senderName, phoneNumber) {
+  try {
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const { data: sacrificeStatus, error } = await supabase
+      .from('user_capture_limits')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    if (!sacrificeStatus || sacrificeStatus.last_trade_date !== today) {
+      return {
+        sacrificesAvailable: 5,
+        extraCaptures: sacrificeStatus ? sacrificeStatus.extra_captures : 0
+      };
+    } else {
+      return {
+        sacrificesAvailable: Math.max(0, 5 - sacrificeStatus.trades_today),
+        extraCaptures: sacrificeStatus.extra_captures
+      };
+    }
+  } catch (error) {
+    console.error('Erro ao obter status de sacrifícios do usuário:', error);
+    return { error: error.message || 'Erro inesperado ao obter status de sacrifícios' };
+  }
+}
+
 export async function tradeForCaptures(senderName, phoneNumber) {
   try {
     const user = await getOrCreateUser(senderName, phoneNumber);
     if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const result = await tradePokemonForCaptures(user.id, user.username);
-    return result;
+    const { data: pokemon, error: pokemonError } = await supabase
+      .from('pokemon_generated')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (pokemonError) throw pokemonError;
+    if (!pokemon || pokemon.length === 0) {
+      return { message: 'Você não tem nenhum Pokémon para trocar.' };
+    }
+
+    const { data: tradeStatus, error: statusError } = await supabase
+      .from('user_trade_status')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (statusError && statusError.code !== 'PGRST116') throw statusError;
+
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    if (!tradeStatus || tradeStatus.last_trade_date !== today) {
+      await supabase
+        .from('user_trade_status')
+        .upsert({
+          user_id: user.id,
+          trades_today: 1,
+          last_trade_date: today,
+          extra_captures: tradeStatus ? tradeStatus.extra_captures + 2 : 2
+        });
+    } else if (tradeStatus.trades_today >= 5) {
+      return { message: 'Você já atingiu o limite diário de 5 trocas.' };
+    } else {
+      await supabase
+        .from('user_trade_status')
+        .update({
+          trades_today: tradeStatus.trades_today + 1,
+          extra_captures: tradeStatus.extra_captures + 2
+        })
+        .eq('user_id', user.id);
+    }
+
+    await supabase
+      .from('pokemon_generated')
+      .delete()
+      .eq('id', pokemon[0].id);
+
+    return { message: `Você trocou ${pokemon[0].pokemon_name} por 2 capturas extras!` };
   } catch (error) {
     console.error('Erro ao trocar Pokémon por capturas:', error);
-    return { error: error.message || 'Erro inesperado ao trocar Pokémon por capturas' };
+    return { message: 'Ocorreu um erro ao realizar a troca. Tente novamente mais tarde.' };
   }
 }
 
