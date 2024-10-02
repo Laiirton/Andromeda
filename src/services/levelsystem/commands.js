@@ -103,6 +103,13 @@ export async function handleLevelSystemToggle(message, args) {
     return;
   }
 
+  // Verifica se o usuário é um administrador do grupo
+  const participant = await chat.participants.find(p => p.id._serialized === message.author);
+  if (!participant.isAdmin) {
+    await message.reply("Apenas administradores podem ativar ou desativar o sistema de níveis.");
+    return;
+  }
+
   if (!args[0] || (args[0] !== 'on' && args[0] !== 'off')) {
     await message.reply("Uso correto: !levelsystem [on/off]");
     return;
