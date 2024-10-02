@@ -140,11 +140,16 @@ class MessageController {
   static async handlePokemon(client, message, senderName) {
     try {
       const phoneNumber = message.author || message.from.split('@')[0];
-      // Remover qualquer coisa que não seja dígito
       const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
       const result = await getRandomPokemonNameAndImage(senderName, cleanPhoneNumber);
       if (result.error) {
-        await message.reply(result.error);
+        if (result.nextCaptureTime) {
+          const timeUntilNextCapture = result.nextCaptureTime - new Date();
+          const minutesUntilNextCapture = Math.ceil(timeUntilNextCapture / (60 * 1000));
+          await message.reply(`Você atingiu o limite de capturas. Poderá capturar novamente em ${minutesUntilNextCapture} minutos.`);
+        } else {
+          await message.reply(result.error);
+        }
       } else {
         let media;
         if (result.imageUrl.startsWith('http')) {
@@ -157,6 +162,7 @@ class MessageController {
         const shinyStatus = result.isShiny ? "✨ Shiny ✨" : "normal";
         const rarityStatus = result.isLegendary ? "Lendário" : (result.isMythical ? "Mítico" : "");
         let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}${rarityStatus ? ` (${rarityStatus})` : ''}!`;
+        caption += `\nVocê tem ${result.remainingCaptures} capturas restantes nesta hora.`;
         
         await client.sendMessage(message.from, media, { caption });
 
@@ -446,11 +452,8 @@ class MessageController {
       const result = await sacrificePokemon(senderName, cleanPhoneNumber, pokemonName);
       let replyMessage = result.message;
 
-      if (result.sacrificedPokemons) {
-        replyMessage += "\n\nPokémon sacrificados hoje:";
-        result.sacrificedPokemons.forEach((pokemon, index) => {
-          replyMessage += `\n${index + 1}. ${pokemon}`;
-        });
+      if (result.minutesRemaining !== undefined) {
+        replyMessage += `\nVocê poderá capturar novamente em ${result.minutesRemaining} minutos.`;
       }
 
       await message.reply(replyMessage);
