@@ -82,7 +82,7 @@ class MessageController {
       nsfw: () => message.reply(menuNSFW),
       groups: () => printGroupList(client),
       pokemon: () => this.handlePokemon(client, message, senderName),
-      pokedex: (args) => this.handlePokedex(client, message, senderName, args[0]),
+      pokedex: (args) => this.handlePokedex(client, message, senderName, args),
       companion: () => this.handleChooseCompanion(client, message, senderName),
       trade: () => this.handleTrade(client, message, senderName, args),
       accepttrade: () => this.handleAcceptTrade(client, message, senderName, args),
@@ -125,7 +125,10 @@ class MessageController {
 
   static async handlePokemon(client, message, senderName) {
     try {
-      const result = await addToQueue(() => getRandomPokemonNameAndImage(senderName));
+      const phoneNumber = message.author || message.from.split('@')[0];
+      // Remover qualquer coisa que não seja dígito
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      const result = await getRandomPokemonNameAndImage(senderName, cleanPhoneNumber);
       if (result.error) {
         await message.reply(result.error);
       } else {
@@ -160,12 +163,14 @@ class MessageController {
     }
   }
 
-  static async handlePokedex(client, message, senderName) {
+  static async handlePokedex(client, message, senderName, args) {
     try {
-      const args = message.body.split(' ');
-      const page = args.length > 1 ? parseInt(args[1]) : 1;
+      const phoneNumber = message.author || message.from.split('@')[0];
+      // Remover qualquer coisa que não seja dígito
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      const page = args.length > 0 ? parseInt(args[0]) : 1;
       
-      const result = await addToQueue(() => getUserPokemon(senderName, page));
+      const result = await getUserPokemon(senderName, cleanPhoneNumber, page);
       if (result.error) {
         await message.reply(result.error);
       } else {
@@ -335,6 +340,11 @@ class MessageController {
         return;
       }
 
+      if (pendingTrade.isInitiator) {
+        await message.reply("Você não pode aceitar uma troca que você mesmo iniciou. Aguarde a resposta do outro usuário.");
+        return;
+      }
+
       const result = await respondToTrade(senderName, pendingTrade.id, true, respondPokemonName);
       if (result.error) {
         await message.reply(result.error);
@@ -342,10 +352,10 @@ class MessageController {
         await message.reply(result.message);
         // Notificar o iniciador da troca
         const chat = await message.getChat();
-        const initiator = chat.participants.find(p => p.id.user === pendingTrade.initiator);
+        const initiator = chat.participants.find(p => p.id.user === result.initiatorUsername || p.id.user === result.initiatorUsername.replace(/[^0-9]/g, ''));
         if (initiator) {
           await client.sendMessage(initiator.id._serialized, 
-            `${senderName} aceitou sua proposta de troca! Você recebeu um ${respondPokemonName} em troca do seu ${pendingTrade.pokemonOffered}.`);
+            `${senderName} aceitou sua proposta de troca! Você recebeu um ${respondPokemonName} em troca do seu ${result.initiatorPokemon}.`);
         }
       }
     } catch (error) {
@@ -362,6 +372,11 @@ class MessageController {
         return;
       }
 
+      if (pendingTrade.isInitiator) {
+        await message.reply("Você não pode rejeitar uma troca que você mesmo iniciou. Use !canceltrade para cancelar a troca.");
+        return;
+      }
+
       const result = await respondToTrade(senderName, pendingTrade.id, false);
       if (result.error) {
         await message.reply(result.error);
@@ -369,7 +384,7 @@ class MessageController {
         await message.reply(result.message);
         // Notificar o iniciador da troca
         const chat = await message.getChat();
-        const initiator = chat.participants.find(p => p.id.user === pendingTrade.initiator);
+        const initiator = chat.participants.find(p => p.id.user === result.initiatorUsername || p.id.user === result.initiatorUsername.replace(/[^0-9]/g, ''));
         if (initiator) {
           await client.sendMessage(initiator.id._serialized, 
             `${senderName} recusou sua proposta de troca para o Pokémon ${pendingTrade.pokemonOffered}.`);
