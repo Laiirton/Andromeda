@@ -30,6 +30,7 @@ import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
 import { addToQueue } from "../utils/requestQueue.js";
 import { searchR34, getRandomR34 } from "../services/r34Service.js";
+import { processMessage as processLevelMessage, getUserLevel, getTopUsers, toggleLevelSystem, isLevelSystemActive } from '../services/levelSystem.js';
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
 const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
@@ -64,6 +65,7 @@ class MessageController {
   static async handleCommand(client, message, command, args) {
     const contact = await message.getContact();
     const senderName = contact.pushname;
+    const chat = await message.getChat();
 
     const commandHandlers = {
       transcribe: () => this.handleTranscribe(message),
@@ -93,6 +95,9 @@ class MessageController {
       sacrificar: (args) => this.handleSacrificePokemon(client, message, senderName, args),
       sacrificiostatus: () => this.handleSacrificeStatus(client, message, senderName),
       pokesystem: () => message.reply(pokemonSystemInfo),
+      levelsystem: () => this.handleLevelSystemToggle(message, args),
+      level: () => this.handleLevelCommand(message),
+      rank: () => this.handleRankCommand(message),
     };
 
     const handler = commandHandlers[command];
@@ -478,11 +483,107 @@ class MessageController {
     }
   }
 
+  static async handleLevelSystemToggle(message, args) {
+    const chat = await message.getChat();
+    if (!chat.isGroup) {
+      await message.reply("Este comando só pode ser usado em grupos.");
+      return;
+    }
+
+    if (!args[0] || (args[0] !== 'on' && args[0] !== 'off')) {
+      await message.reply("Uso correto: !levelsystem [on/off]");
+      return;
+    }
+
+    const isActive = args[0] === 'on';
+    const result = await toggleLevelSystem(chat.id._serialized, isActive);
+
+    if (result !== null) {
+      await message.reply(`Sistema de níveis ${isActive ? 'ativado' : 'desativado'} para este grupo.`);
+    } else {
+      await message.reply("Ocorreu um erro ao alterar o status do sistema de níveis.");
+    }
+  }
+
+  static async handleLevelCommand(message) {
+    const chat = await message.getChat();
+    if (!chat.isGroup) {
+      await message.reply("Este comando só pode ser usado em grupos.");
+      return;
+    }
+
+    if (!await isLevelSystemActive(chat.id._serialized)) {
+      await message.reply("O sistema de níveis não está ativo neste grupo. Use !levelsystem on para ativar.");
+      return;
+    }
+
+    const phoneNumber = message.author || message.from.split('@')[0];
+    const userLevel = await getUserLevel(phoneNumber, chat.id._serialized);
+    if (!userLevel) {
+      await message.reply("Não foi possível encontrar suas informações de nível. Por favor, envie algumas mensagens e tente novamente.");
+      return;
+    }
+
+    const nextLevelXP = Math.pow((userLevel.level + 1) / 0.1, 2);
+    const xpNeeded = nextLevelXP - userLevel.xp;
+
+    await message.reply(
+      `📊 *Suas Estatísticas*\n\n` +
+      `👤 Nome: ${userLevel.username}\n` +
+      `🏆 Nível: ${userLevel.level}\n` +
+      `✨ XP: ${userLevel.xp}\n` +
+      `📨 Mensagens enviadas: ${userLevel.messages_sent}\n` +
+      `📈 XP para o próximo nível: ${xpNeeded}\n\n` +
+      `Continue interagindo para subir de nível!`
+    );
+  }
+
+  static async handleRankCommand(message) {
+    const chat = await message.getChat();
+    if (!chat.isGroup) {
+      await message.reply("Este comando só pode ser usado em grupos.");
+      return;
+    }
+
+    if (!await isLevelSystemActive(chat.id._serialized)) {
+      await message.reply("O sistema de níveis não está ativo neste grupo. Use !levelsystem on para ativar.");
+      return;
+    }
+
+    const topUsers = await getTopUsers(chat.id._serialized, 10);
+    if (topUsers.length === 0) {
+      await message.reply("Ainda não há usuários ranqueados neste grupo.");
+      return;
+    }
+
+    let rankMessage = "🏆 *Ranking do Grupo* 🏆\n\n";
+    topUsers.forEach((user, index) => {
+      rankMessage += `${index + 1}. ${user.username}\n`;
+      rankMessage += `   Nível: ${user.level} | XP: ${user.xp}\n\n`;
+    });
+
+    await message.reply(rankMessage);
+  }
+
   static async processMessage(client, message) {
     const contact = await message.getContact();
     const senderName = contact.pushname;
+    const chat = await message.getChat();
+    const phoneNumber = message.author || message.from.split('@')[0];
 
     messageLog(message, senderName);
+
+    if (chat.isGroup) {
+      const isActive = await isLevelSystemActive(chat.id._serialized);
+      if (isActive) {
+        console.log(`Processando mensagem para sistema de níveis: ${senderName} (${phoneNumber}) no grupo ${chat.name}`);
+        const levelUp = await processLevelMessage(phoneNumber, chat.id._serialized, senderName);
+        if (levelUp) {
+          await message.reply(`🎉 Parabéns, ${senderName}! Você subiu para o nível ${levelUp}! 🎉`);
+          console.log(`${senderName} subiu para o nível ${levelUp} no grupo ${chat.name}`);
+        }
+      }
+    }
 
     const lowerCaseBody = message.body.toLowerCase();
     if (lowerCaseBody.includes("coiso")) {
