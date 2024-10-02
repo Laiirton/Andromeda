@@ -32,7 +32,6 @@ import { addToQueue } from "../utils/requestQueue.js";
 import { searchR34, getRandomR34 } from "../services/r34Service.js";
 import {
   handleLevelCommand,
-  handleRankCommand,
   handleTopRankCommand,
   handleLevelSystemToggle,
   processMessage as processLevelMessage,
@@ -105,7 +104,6 @@ class MessageController {
       pokesystem: () => message.reply(pokemonSystemInfo),
       levelsystem: () => handleLevelSystemToggle(message, args),
       level: () => handleLevelCommand(message),
-      rank: () => handleRankCommand(message),
       toprank: () => handleTopRankCommand(client, message),
     };
 
