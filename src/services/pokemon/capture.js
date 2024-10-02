@@ -12,7 +12,8 @@ import {
 } from './database.js';
 import { getCompanionProgress, evolveCompanion } from './companion.js';
 import { createPokedexImage } from './pokedex.js';
-import { checkAndUpdateCaptureLimit, getRemainingCaptures, tradePokemonForCaptures, getTradeStatus } from './captureLimits.js';
+import { checkAndUpdateCaptureLimit, getRemainingCaptures, getTradeStatus } from './captureLimits.js';
+import { sacrificePokemon as sacrificePokemonLimit } from './captureLimits.js';
 
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
@@ -37,12 +38,15 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
     const user = await getOrCreateUser(senderName, phoneNumber);
     if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const { canCapture, remainingCaptures } = await checkAndUpdateCaptureLimit(user.id, user.username);
+    const { canCapture, remainingCaptures, nextCaptureTime } = await checkAndUpdateCaptureLimit(user.id, user.username);
 
     if (!canCapture) {
+      const timeUntilNextCapture = nextCaptureTime - new Date();
+      const minutesUntilNextCapture = Math.ceil(timeUntilNextCapture / (60 * 1000));
       return { 
-        error: 'Você atingiu o limite diário de capturas. Tente novamente amanhã!',
-        remainingCaptures
+        error: `Você atingiu o limite de capturas. Poderá capturar novamente em ${minutesUntilNextCapture} minutos.`,
+        remainingCaptures,
+        nextCaptureTime
       };
     }
 
@@ -224,67 +228,23 @@ export async function sacrificePokemon(senderName, phoneNumber, pokemonName) {
       return { message: `Você não possui o Pokémon ${pokemonName} em sua coleção.` };
     }
 
-    const { data: sacrificeStatus, error: statusError } = await supabase
-      .from('user_capture_limits')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+    const result = await sacrificePokemonLimit(user.id, user.username, pokemonName);
 
-    if (statusError && statusError.code !== 'PGRST116') throw statusError;
+    if (result.success) {
+      await supabase
+        .from('pokemon_generated')
+        .delete()
+        .eq('id', pokemon[0].id);
 
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
+      console.log('Sacrifício realizado:', result);
 
-    let sacrificedPokemons = [];
-    if (sacrificeStatus && sacrificeStatus.last_trade_date === today) {
-      sacrificedPokemons = sacrificeStatus.sacrificed_pokemons || [];
-    }
-
-    if (sacrificedPokemons.length >= 5) {
-      return { message: 'Você já atingiu o limite diário de 5 sacrifícios.' };
-    }
-
-    sacrificedPokemons.push(pokemonName);
-
-    const updateData = {
-      trades_today: sacrificedPokemons.length,
-      last_trade_date: today,
-      extra_captures: (sacrificeStatus ? sacrificeStatus.extra_captures : 0) + 2,
-      username: user.username,
-      sacrificed_pokemons: sacrificedPokemons
-    };
-
-    let result;
-    if (sacrificeStatus) {
-      // Atualiza o registro existente
-      result = await supabase
-        .from('user_capture_limits')
-        .update(updateData)
-        .eq('user_id', user.id)
-        .select()
-        .single();
+      return { 
+        message: result.message,
+        minutesRemaining: result.minutesRemaining
+      };
     } else {
-      // Insere um novo registro
-      result = await supabase
-        .from('user_capture_limits')
-        .insert({...updateData, user_id: user.id})
-        .select()
-        .single();
+      return { message: result.message };
     }
-
-    if (result.error) throw result.error;
-
-    await supabase
-      .from('pokemon_generated')
-      .delete()
-      .eq('id', pokemon[0].id);
-
-    console.log('Sacrifício realizado:', result.data);
-
-    return { 
-      message: `Você sacrificou ${pokemonName} e ganhou 2 capturas extras!`,
-      sacrificedPokemons
-    };
   } catch (error) {
     console.error('Erro ao sacrificar Pokémon:', error);
     return { message: 'Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.' };
