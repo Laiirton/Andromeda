@@ -1,7 +1,7 @@
 import { supabase } from './database.js';
 import { getOrCreateUser } from './database.js';
 
-const TRADE_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 horas em milissegundos
+const TRADE_EXPIRATION_TIME = 1 * 60 * 1000; // 1 minuto em milissegundos
 
 async function cleanupExpiredTrades() {
   const expirationDate = new Date(Date.now() - TRADE_EXPIRATION_TIME);
@@ -17,26 +17,24 @@ async function cleanupExpiredTrades() {
 
 export async function initiateTrade(initiatorUsername, receiverUsername, pokemonName) {
   try {
-    await cleanupExpiredTrades(); // Limpa trocas expiradas antes de iniciar uma nova
+    await cleanupExpiredTrades();
 
-    const initiatorId = await getOrCreateUser(initiatorUsername);
-    const receiverId = await getOrCreateUser(receiverUsername);
+    const initiator = await getOrCreateUser(initiatorUsername);
+    const receiver = await getOrCreateUser(receiverUsername);
 
-    if (!initiatorId || !receiverId) {
+    if (!initiator || !receiver) {
       throw new Error('Um dos usuários não foi encontrado');
     }
 
-    // Verificar trocas pendentes
-    const pendingTrades = await getPendingTradesForUser(initiatorUsername);
+    const pendingTrades = await getPendingTradesForUser(initiator.username);
     if (pendingTrades.length > 0) {
       return { error: 'Você já tem uma troca pendente. Use !pendingtrades para ver suas trocas pendentes.' };
     }
 
-    // Verificar se o iniciador possui o Pokémon (case insensitive)
     const { data: initiatorPokemon, error: pokemonError } = await supabase
       .from('pokemon_generated')
       .select('id, pokemon_name')
-      .eq('user_id', initiatorId)
+      .eq('user_id', initiator.id)
       .ilike('pokemon_name', pokemonName)
       .limit(1);
 
@@ -44,12 +42,11 @@ export async function initiateTrade(initiatorUsername, receiverUsername, pokemon
       throw new Error('Pokémon não encontrado na sua coleção');
     }
 
-    // Criar a proposta de troca
     const { data: trade, error: tradeError } = await supabase
       .from('pokemon_trades')
       .insert({
-        initiator_user_id: initiatorId,
-        receiver_user_id: receiverId,
+        initiator_user_id: initiator.id,
+        receiver_user_id: receiver.id,
         initiator_pokemon_id: initiatorPokemon[0].id,
         status: 'pending'
       })
@@ -59,7 +56,7 @@ export async function initiateTrade(initiatorUsername, receiverUsername, pokemon
     if (tradeError) throw tradeError;
 
     return {
-      message: `Proposta de troca iniciada. Aguardando resposta de ${receiverUsername}.`,
+      message: `Proposta de troca iniciada. Aguardando resposta de ${receiver.username}.`,
       tradeId: trade.id,
       pokemonName: initiatorPokemon[0].pokemon_name
     };
@@ -71,39 +68,47 @@ export async function initiateTrade(initiatorUsername, receiverUsername, pokemon
 
 export async function respondToTrade(responderUsername, tradeId, acceptTrade, respondPokemonName) {
   try {
-    const responderId = await getOrCreateUser(responderUsername);
+    const responder = await getOrCreateUser(responderUsername);
 
-    if (!responderId) {
+    if (!responder) {
       throw new Error('Usuário não encontrado');
     }
 
-    // Verificar se a troca existe e está pendente
     const { data: trade, error: tradeError } = await supabase
       .from('pokemon_trades')
-      .select('*, pokemon_generated(pokemon_name)')
+      .select(`
+        *,
+        initiator_pokemon:initiator_pokemon_id(pokemon_name),
+        initiator:initiator_user_id(username)
+      `)
       .eq('id', tradeId)
-      .eq('receiver_user_id', responderId)
+      .eq('receiver_user_id', responder.id)
       .eq('status', 'pending')
       .single();
 
-    if (tradeError || !trade) {
-      throw new Error('Proposta de troca não encontrada ou já finalizada');
+    if (tradeError) {
+      if (tradeError.code === 'PGRST116') {
+        return { error: 'Proposta de troca não encontrada ou já finalizada' };
+      }
+      throw tradeError;
+    }
+
+    if (!trade) {
+      return { error: 'Você não tem nenhuma proposta de troca pendente.' };
     }
 
     if (acceptTrade) {
-      // Verificar se o respondedor possui o Pokémon oferecido
       const { data: responderPokemon, error: pokemonError } = await supabase
         .from('pokemon_generated')
         .select('id')
-        .eq('user_id', responderId)
-        .eq('pokemon_name', respondPokemonName.toLowerCase())
+        .eq('user_id', responder.id)
+        .ilike('pokemon_name', respondPokemonName)
         .limit(1);
 
       if (pokemonError || !responderPokemon.length) {
-        throw new Error('Pokémon não encontrado na sua coleção');
+        return { error: 'Pokémon não encontrado na sua coleção' };
       }
 
-      // Atualizar a troca
       const { error: updateError } = await supabase
         .from('pokemon_trades')
         .update({
@@ -115,16 +120,15 @@ export async function respondToTrade(responderUsername, tradeId, acceptTrade, re
 
       if (updateError) throw updateError;
 
-      // Trocar os Pokémon entre os usuários
       await swapPokemons(trade.initiator_user_id, trade.receiver_user_id, trade.initiator_pokemon_id, responderPokemon[0].id);
 
       return { 
         message: 'Troca concluída com sucesso!',
-        initiatorPokemon: trade.pokemon_generated.pokemon_name,
-        responderPokemon: respondPokemonName
+        initiatorPokemon: trade.initiator_pokemon.pokemon_name,
+        responderPokemon: respondPokemonName,
+        initiatorUsername: trade.initiator.username
       };
     } else {
-      // Recusar a troca
       const { error: updateError } = await supabase
         .from('pokemon_trades')
         .update({
@@ -135,7 +139,10 @@ export async function respondToTrade(responderUsername, tradeId, acceptTrade, re
 
       if (updateError) throw updateError;
 
-      return { message: 'Proposta de troca recusada.' };
+      return { 
+        message: 'Proposta de troca recusada.',
+        initiatorUsername: trade.initiator.username
+      };
     }
   } catch (error) {
     console.error('Erro ao responder à troca:', error);
@@ -156,9 +163,9 @@ async function swapPokemons(initiatorId, receiverId, initiatorPokemonId, receive
 
 export async function getPendingTradeForUser(username) {
   try {
-    const userId = await getOrCreateUser(username);
+    const user = await getOrCreateUser(username);
 
-    if (!userId) {
+    if (!user) {
       throw new Error('Usuário não encontrado');
     }
 
@@ -171,10 +178,10 @@ export async function getPendingTradeForUser(username) {
         initiator_pokemon_id,
         status,
         created_at,
-        users!initiator_user_id(username),
-        pokemon_generated!initiator_pokemon_id(pokemon_name)
+        initiator:initiator_user_id(username),
+        initiator_pokemon:initiator_pokemon_id(pokemon_name)
       `)
-      .eq('receiver_user_id', userId)
+      .or(`receiver_user_id.eq.${user.id},initiator_user_id.eq.${user.id}`)
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
       .limit(1)
@@ -189,9 +196,10 @@ export async function getPendingTradeForUser(username) {
 
     return pendingTrade ? {
       id: pendingTrade.id,
-      initiator: pendingTrade.users.username,
-      pokemonOffered: pendingTrade.pokemon_generated.pokemon_name,
-      createdAt: pendingTrade.created_at
+      initiator: pendingTrade.initiator.username,
+      pokemonOffered: pendingTrade.initiator_pokemon.pokemon_name,
+      createdAt: pendingTrade.created_at,
+      isInitiator: pendingTrade.initiator_user_id === user.id
     } : null;
   } catch (error) {
     console.error('Erro ao buscar troca pendente:', error);
@@ -201,10 +209,10 @@ export async function getPendingTradeForUser(username) {
 
 export async function getPendingTradesForUser(username) {
   try {
-    const userId = await getOrCreateUser(username);
-    if (!userId) throw new Error('Usuário não encontrado');
+    const user = await getOrCreateUser(username);
+    if (!user) throw new Error('Usuário não encontrado');
 
-    await cleanupExpiredTrades(); // Limpa trocas expiradas antes de listar
+    await cleanupExpiredTrades();
 
     const { data: pendingTrades, error } = await supabase
       .from('pokemon_trades')
@@ -215,11 +223,11 @@ export async function getPendingTradesForUser(username) {
         initiator_pokemon_id,
         status,
         created_at,
-        initiator:users!initiator_user_id(username),
-        receiver:users!receiver_user_id(username),
-        pokemon:pokemon_generated!initiator_pokemon_id(pokemon_name)
+        initiator:initiator_user_id(username),
+        receiver:receiver_user_id(username),
+        initiator_pokemon:initiator_pokemon_id(pokemon_name)
       `)
-      .or(`initiator_user_id.eq.${userId},receiver_user_id.eq.${userId}`)
+      .or(`initiator_user_id.eq.${user.id},receiver_user_id.eq.${user.id}`)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
@@ -229,9 +237,9 @@ export async function getPendingTradesForUser(username) {
       id: trade.id,
       initiator: trade.initiator.username,
       receiver: trade.receiver.username,
-      pokemonOffered: trade.pokemon.pokemon_name,
+      pokemonOffered: trade.initiator_pokemon.pokemon_name,
       createdAt: trade.created_at,
-      isInitiator: trade.initiator_user_id === userId
+      isInitiator: trade.initiator_user_id === user.id
     }));
   } catch (error) {
     console.error('Erro ao listar trocas pendentes:', error);
