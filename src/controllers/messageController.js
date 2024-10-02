@@ -5,7 +5,7 @@ import {
   searchRule34,
 } from "../services/mediaService.js";
 import { getGeminiResponse } from "../services/googleAIService.js";
-import { menu, menuNSFW } from "../utils/lang.js";
+import { menu, menuNSFW, pokemonSystemInfo } from "../utils/lang.js";
 import {
   deleteMessage,
   messageLog,
@@ -20,7 +20,9 @@ import {
   initiateTrade,
   respondToTrade,
   getPendingTradeForUser,
-  getPendingTradesForUser
+  getPendingTradesForUser,
+  tradeForCaptures,
+  getUserTradeStatus
 } from "../services/pokemon/index.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
@@ -86,6 +88,9 @@ class MessageController {
       accepttrade: () => this.handleAcceptTrade(client, message, senderName, args),
       rejecttrade: () => this.handleRejectTrade(client, message, senderName),
       pendingtrades: () => this.handlePendingTrades(client, message, senderName),
+      tradecaptures: () => this.handleTradeForCaptures(client, message, senderName),
+      tradestatus: () => this.handleTradeStatus(client, message, senderName),
+      pokesystem: () => message.reply(pokemonSystemInfo),
     };
 
     const handler = commandHandlers[command];
@@ -398,6 +403,34 @@ class MessageController {
     } catch (error) {
       console.error("Erro ao listar trocas pendentes:", error);
       await message.reply("Ocorreu um erro ao listar as trocas pendentes. Tente novamente mais tarde.");
+    }
+  }
+
+  static async handleTradeForCaptures(client, message, senderName) {
+    try {
+      const result = await tradeForCaptures(senderName);
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        await message.reply(result.message);
+      }
+    } catch (error) {
+      console.error('Erro ao trocar Pokémon por capturas:', error);
+      await message.reply('Ocorreu um erro ao realizar a troca. Tente novamente mais tarde.');
+    }
+  }
+
+  static async handleTradeStatus(client, message, senderName) {
+    try {
+      const status = await getUserTradeStatus(senderName);
+      if (status.error) {
+        await message.reply(status.error);
+      } else {
+        await message.reply(`Você tem ${status.tradesAvailable} trocas disponíveis hoje e ${status.extraCaptures} capturas extras acumuladas.`);
+      }
+    } catch (error) {
+      console.error('Erro ao obter status de trocas:', error);
+      await message.reply('Ocorreu um erro ao obter o status de trocas. Tente novamente mais tarde.');
     }
   }
 
