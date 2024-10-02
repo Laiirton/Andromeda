@@ -13,8 +13,6 @@ import {
 import { getCompanionProgress, evolveCompanion } from './companion.js';
 import { createPokedexImage } from './pokedex.js';
 
-const CAPTURE_LIMIT = 5;
-const COOLDOWN_PERIOD = 60 * 60 * 2000; 
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
 const SHINY_CHANCE = 1 / 4096;
@@ -37,22 +35,6 @@ export async function getRandomPokemonNameAndImage(senderName) {
   try {
     const userId = await getOrCreateUser(senderName);
     if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
-
-    const captureInfo = await getUserCaptureInfo(userId);
-    if (!captureInfo) throw new Error('Erro ao obter informações de captura');
-
-    const currentTime = new Date();
-    const lastCaptureTime = new Date(captureInfo.last_capture_time);
-    const timeSinceLastCapture = currentTime - lastCaptureTime;
-
-    if (timeSinceLastCapture < COOLDOWN_PERIOD && captureInfo.capture_count >= CAPTURE_LIMIT) {
-      const remainingTime = Math.ceil((COOLDOWN_PERIOD - timeSinceLastCapture) / 60000);
-      return { error: `Você atingiu o limite de capturas. Tente novamente em ${remainingTime} minutos.` };
-    }
-
-    if (timeSinceLastCapture >= COOLDOWN_PERIOD) {
-      captureInfo.capture_count = 0;
-    }
 
     let pokemon = null;
     let isShiny = false;
@@ -102,10 +84,6 @@ export async function getRandomPokemonNameAndImage(senderName) {
     const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl, isShiny, isLegendary, isMythical);
     if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
 
-    captureInfo.capture_count += 1;
-    captureInfo.last_capture_time = currentTime.toISOString();
-    await updateUserCaptureInfo(userId, captureInfo.capture_count, captureInfo.last_capture_time);
-
     const companion = await getCompanionProgress(userId);
     let companionEvolution = null;
     let companionImage = null;
@@ -128,11 +106,10 @@ export async function getRandomPokemonNameAndImage(senderName) {
       }
     }
 
-    console.log(`Novo Pokémon capturado: ${name} (${isShiny ? 'Shiny' : 'Normal'}). Capturas restantes: ${CAPTURE_LIMIT - captureInfo.capture_count}`);
+    console.log(`Novo Pokémon capturado: ${name} (${isShiny ? 'Shiny' : 'Normal'})`);
     return { 
       name, 
       imageUrl, 
-      capturesRemaining: CAPTURE_LIMIT - captureInfo.capture_count, 
       isShiny,
       isLegendary,
       isMythical,

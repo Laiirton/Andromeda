@@ -134,7 +134,7 @@ class MessageController {
         }
         const shinyStatus = result.isShiny ? "✨ Shiny ✨" : "normal";
         const rarityStatus = result.isLegendary ? "Lendário" : (result.isMythical ? "Mítico" : "");
-        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}${rarityStatus ? ` (${rarityStatus})` : ''}!\nCapturas restantes: ${result.capturesRemaining}`;
+        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}${rarityStatus ? ` (${rarityStatus})` : ''}!`;
         
         await client.sendMessage(message.from, media, { caption });
 
