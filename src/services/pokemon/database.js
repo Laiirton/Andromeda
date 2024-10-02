@@ -5,28 +5,42 @@ export const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export async function getOrCreateUser(username) {
+export async function getOrCreateUser(username, phoneNumber) {
   try {
+    // Primeiro, tenta encontrar o usuário pelo número de telefone ou nome de usuário
     let { data: user, error } = await supabase
       .from('users')
-      .select('id')
-      .eq('username', username)
-      .single();
+      .select('id, username, phone_number')
+      .or(`phone_number.eq.${phoneNumber},username.ilike.${username}`)
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error) throw error;
 
     if (!user) {
+      // Se não encontrar, cria um novo usuário
+      const cleanUsername = username.replace(/[^a-zA-Z0-9]/g, '');
       const { data: newUser, error: insertError } = await supabase
         .from('users')
-        .insert({ username })
-        .select('id')
+        .insert({ username: cleanUsername, phone_number: phoneNumber })
+        .select('id, username, phone_number')
         .single();
 
       if (insertError) throw insertError;
       user = newUser;
+    } else if (user.phone_number !== phoneNumber) {
+      // Atualiza o número de telefone se for diferente
+      const { data: updatedUser, error: updateError } = await supabase
+        .from('users')
+        .update({ phone_number: phoneNumber })
+        .eq('id', user.id)
+        .select('id, username, phone_number')
+        .single();
+
+      if (updateError) throw updateError;
+      user = updatedUser;
     }
 
-    return user.id;
+    return user;
   } catch (error) {
     console.error('Erro ao obter ou criar usuário:', error);
     return null;
