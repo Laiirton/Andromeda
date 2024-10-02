@@ -32,12 +32,12 @@ async function fetchPokemonFromPokeAPI(id) {
   }
 }
 
-export async function getRandomPokemonNameAndImage(senderName) {
+export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
   try {
-    const userId = await getOrCreateUser(senderName);
-    if (!userId) throw new Error('Não foi possível criar ou obter o usuário');
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const { canCapture, remainingCaptures } = await checkAndUpdateCaptureLimit(userId, senderName);
+    const { canCapture, remainingCaptures } = await checkAndUpdateCaptureLimit(user.id, user.username);
 
     if (!canCapture) {
       return { 
@@ -91,19 +91,19 @@ export async function getRandomPokemonNameAndImage(senderName) {
     const isLegendary = isPokemonLegendary(name);
     const isMythical = isPokemonMythical(name);
 
-    const savedPokemon = await savePokemonToSupabase(userId, name, imageUrl, isShiny, isLegendary, isMythical);
+    const savedPokemon = await savePokemonToSupabase(user.id, name, imageUrl, isShiny, isLegendary, isMythical);
     if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
 
-    const companion = await getCompanionProgress(userId);
+    const companion = await getCompanionProgress(user.id);
     let companionEvolution = null;
     let companionImage = null;
 
     if (companion) {
       companion.capture_count += 1;
-      await updateUserCaptureInfo(userId, companion.capture_count, null);
+      await updateUserCaptureInfo(user.id, companion.capture_count, null);
 
       if (companion.capture_count >= EVOLUTION_THRESHOLD) {
-        const evolutionResult = await evolveCompanion(userId);
+        const evolutionResult = await evolveCompanion(user.id);
         if (evolutionResult.error) {
           console.error('Erro ao evoluir companheiro:', evolutionResult.error);
         } else if (evolutionResult.message) {
@@ -133,16 +133,16 @@ export async function getRandomPokemonNameAndImage(senderName) {
   }
 }
 
-export async function getUserPokemon(senderName, page = 1, itemsPerPage = 40) {
+export async function getUserPokemon(senderName, phoneNumber, page = 1, itemsPerPage = 40) {
   try {
-    const userId = await getOrCreateUser(senderName);
-    if (!userId) throw new Error('Usuário não encontrado');
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
     // Obter o total de Pokémon únicos do usuário
     const { data: uniquePokemon, error: countError } = await supabase
       .from('pokemon_generated')
       .select('pokemon_name')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('pokemon_name');
 
     if (countError) throw countError;
@@ -155,7 +155,7 @@ export async function getUserPokemon(senderName, page = 1, itemsPerPage = 40) {
     const { data, error } = await supabase
       .from('pokemon_generated')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', user.id)
       .order('pokemon_name')
       .order('created_at', { ascending: false });
 
