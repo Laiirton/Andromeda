@@ -23,8 +23,8 @@ async function processRandomChat(client, message, chat) {
     return;
   }
 
-  // Chance de 50% de gerar uma resposta
-  if (Math.random() < 0.5) {
+  // Chance de 10% de gerar uma resposta
+  if (Math.random() < 0.1) {
     const response = await generateRandomResponse(chat.id._serialized);
     if (response) {
       // Simular digitação para parecer mais natural
