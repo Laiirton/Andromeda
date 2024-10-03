@@ -7,7 +7,7 @@ dotenv.config();
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
 const XP_PER_MESSAGE = 10;
-const XP_COOLDOWN = 60000; // 1 minuto em milissegundos
+const XP_COOLDOWN = 30000; // 30 segundos em milissegundos
 
 export async function toggleLevelSystem(groupId, active) {
   try {
