@@ -1,5 +1,5 @@
 import { supabase } from './database.js';
-import { getOrCreateUser } from './database.js';
+import { getOrCreateUser } from '../userService.js';
 
 const TRADE_EXPIRATION_TIME = 1 * 60 * 1000; // 1 minuto em milissegundos
 
@@ -19,20 +19,6 @@ export async function initiateTrade(initiatorUsername, initiatorPhoneNumber, rec
   try {
     await cleanupExpiredTrades();
 
-    // Remover o '@c.us' do número de telefone do iniciador, se presente
-    initiatorPhoneNumber = initiatorPhoneNumber.replace('@c.us', '');
-    
-    // Garantir que o número de telefone do receptor esteja no formato correto
-    receiverPhoneNumber = receiverPhoneNumber.replace(/\D/g, '');
-
-    console.log('Iniciando troca:', {
-      initiatorUsername,
-      initiatorPhoneNumber,
-      receiverUsername,
-      receiverPhoneNumber,
-      pokemonName
-    });
-
     const initiator = await getOrCreateUser(initiatorUsername, initiatorPhoneNumber);
     const receiver = await getOrCreateUser(receiverUsername, receiverPhoneNumber);
 
@@ -41,7 +27,7 @@ export async function initiateTrade(initiatorUsername, initiatorPhoneNumber, rec
       return { error: 'Não foi possível identificar um ou ambos os usuários. Verifique se os números de telefone estão corretos.' };
     }
 
-    const pendingTrades = await getPendingTradesForUser(initiator.username, initiator.phone_number);
+    const pendingTrades = await getPendingTradesForUser(initiator.id);
     if (pendingTrades.length > 0) {
       return { error: 'Você já tem uma troca pendente. Use !pendingtrades para ver suas trocas pendentes.' };
     }
@@ -182,7 +168,6 @@ async function swapPokemons(initiatorId, receiverId, initiatorPokemonId, receive
 export async function getPendingTradeForUser(username, phoneNumber) {
   try {
     const user = await getOrCreateUser(username, phoneNumber);
-
     if (!user) {
       throw new Error('Usuário não encontrado');
     }
@@ -225,11 +210,8 @@ export async function getPendingTradeForUser(username, phoneNumber) {
   }
 }
 
-export async function getPendingTradesForUser(username, phoneNumber) {
+export async function getPendingTradesForUser(userId) {
   try {
-    const user = await getOrCreateUser(username, phoneNumber);
-    if (!user) throw new Error('Usuário não encontrado');
-
     await cleanupExpiredTrades();
 
     const { data: pendingTrades, error } = await supabase
@@ -245,7 +227,7 @@ export async function getPendingTradesForUser(username, phoneNumber) {
         receiver:receiver_user_id(username),
         initiator_pokemon:initiator_pokemon_id(pokemon_name)
       `)
-      .or(`initiator_user_id.eq.${user.id},receiver_user_id.eq.${user.id}`)
+      .or(`initiator_user_id.eq.${userId},receiver_user_id.eq.${userId}`)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
@@ -257,7 +239,7 @@ export async function getPendingTradesForUser(username, phoneNumber) {
       receiver: trade.receiver.username,
       pokemonOffered: trade.initiator_pokemon.pokemon_name,
       createdAt: trade.created_at,
-      isInitiator: trade.initiator_user_id === user.id
+      isInitiator: trade.initiator_user_id === userId
     }));
   } catch (error) {
     console.error('Erro ao listar trocas pendentes:', error);
