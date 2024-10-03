@@ -38,6 +38,10 @@ import {
   isLevelSystemActive
 } from '../services/levelsystem/index.js';
 import { getOrCreateUser } from "../services/userService.js";
+import { generateRandomResponse } from "../services/randomChat/randomChatService.js";
+import { toggleRandomChat } from "../services/randomChat/randomChatState.js";
+import { storeMessage } from "../services/randomChat/messageStore.js";
+import { handleRandomChat, processRandomChat } from "../services/randomChat/randomChatHandler.js";
 
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
@@ -106,6 +110,7 @@ class MessageController {
       levelsystem: () => handleLevelSystemToggle(message, args),
       level: () => handleLevelCommand(message),
       toprank: () => handleTopRankCommand(client, message),
+      randomchat: () => handleRandomChat(message),
     };
 
     const handler = commandHandlers[command];
@@ -510,6 +515,8 @@ class MessageController {
           console.log(`${senderName} subiu para o nível ${levelUp} no grupo ${chat.name}`);
         }
       }
+
+      await processRandomChat(client, message, chat);
     }
 
     const lowerCaseBody = message.body.toLowerCase();
