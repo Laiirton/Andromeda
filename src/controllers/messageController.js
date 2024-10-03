@@ -37,6 +37,7 @@ import {
   processMessage as processLevelMessage,
   isLevelSystemActive
 } from '../services/levelsystem/index.js';
+import { getOrCreateUser } from "../services/userService.js";
 
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
@@ -349,9 +350,10 @@ class MessageController {
     }
 
     const respondPokemonName = args.join(' ');
+    const phoneNumber = message.author || message.from.split('@')[0];
 
     try {
-      const pendingTrade = await getPendingTradeForUser(senderName);
+      const pendingTrade = await getPendingTradeForUser(senderName, phoneNumber);
       if (!pendingTrade) {
         await message.reply("Você não tem nenhuma proposta de troca pendente.");
         return;
@@ -362,7 +364,7 @@ class MessageController {
         return;
       }
 
-      const result = await respondToTrade(senderName, pendingTrade.id, true, respondPokemonName);
+      const result = await respondToTrade(senderName, phoneNumber, pendingTrade.id, true, respondPokemonName);
       if (result.error) {
         await message.reply(result.error);
       } else {
