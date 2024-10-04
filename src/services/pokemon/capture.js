@@ -359,3 +359,71 @@ export async function getUserTradeStatus(senderName, phoneNumber) {
     return { error: error.message || 'Erro inesperado ao obter status de trocas' };
   }
 }
+
+export async function captureAllAvailable(senderName, phoneNumber) {
+  try {
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
+
+    let remainingCaptures = await getRemainingCaptures(user.id, user.username);
+    let capturedPokemon = [];
+    let errors = [];
+    let imageUrls = [];
+
+    while (remainingCaptures > 0) {
+      const result = await getRandomPokemonNameAndImage(senderName, phoneNumber);
+      
+      if (result.error) {
+        errors.push(result.error);
+        break;
+      }
+
+      capturedPokemon.push({
+        name: result.name,
+        isShiny: result.isShiny,
+        isLegendary: result.isLegendary,
+        isMythical: result.isMythical
+      });
+      imageUrls.push(result.imageUrl);
+
+      remainingCaptures--;
+    }
+
+    const totalCaptured = capturedPokemon.length;
+    const shinyCaptured = capturedPokemon.filter(p => p.isShiny).length;
+    const legendaryCaptured = capturedPokemon.filter(p => p.isLegendary).length;
+    const mythicalCaptured = capturedPokemon.filter(p => p.isMythical).length;
+
+    let summaryMessage = `Você capturou ${totalCaptured} Pokémon!\n`;
+    summaryMessage += `✨ Shiny: ${shinyCaptured}\n`;
+    summaryMessage += `🌟 Lendários: ${legendaryCaptured}\n`;
+    summaryMessage += `🎭 Míticos: ${mythicalCaptured}\n\n`;
+
+    if (capturedPokemon.length > 0) {
+      summaryMessage += "Pokémon capturados:\n";
+      capturedPokemon.forEach(pokemon => {
+        let pokemonInfo = pokemon.name;
+        if (pokemon.isShiny) pokemonInfo += " ✨";
+        if (pokemon.isLegendary) pokemonInfo += " 🌟";
+        if (pokemon.isMythical) pokemonInfo += " 🎭";
+        summaryMessage += `${pokemonInfo}\n`;
+      });
+    }
+
+    if (errors.length > 0) {
+      summaryMessage += "\nErros encontrados:\n";
+      errors.forEach(error => {
+        summaryMessage += `${error}\n`;
+      });
+    }
+
+    return { 
+      message: summaryMessage, 
+      capturedCount: totalCaptured,
+      imageUrls: imageUrls
+    };
+  } catch (error) {
+    console.error('Erro ao capturar todos os Pokémon disponíveis:', error);
+    return { error: error.message || 'Erro inesperado ao capturar Pokémon' };
+  }
+}
