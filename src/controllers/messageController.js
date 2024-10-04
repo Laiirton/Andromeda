@@ -24,7 +24,8 @@ import {
   tradeForCaptures,
   getUserTradeStatus,
   sacrificePokemon,
-  getUserSacrificeStatus
+  getUserSacrificeStatus,
+  captureAllAvailable
 } from "../services/pokemon/index.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
@@ -111,6 +112,7 @@ class MessageController {
       level: () => handleLevelCommand(message),
       toprank: () => handleTopRankCommand(client, message),
       randomchat: () => handleRandomChat(message),
+      capturarall: () => this.handleCaptureAll(client, message, senderName),
     };
 
     const handler = commandHandlers[command];
@@ -494,6 +496,44 @@ class MessageController {
     } catch (error) {
       console.error('Erro ao obter status de sacrifícios:', error);
       await message.reply('Ocorreu um erro ao obter o status de sacrifícios. Tente novamente mais tarde.');
+    }
+  }
+
+  static async handleCaptureAll(client, message, senderName) {
+    try {
+      const phoneNumber = message.author || message.from.split('@')[0];
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      
+      await message.reply("Iniciando captura de todos os Pokémon disponíveis. Por favor, aguarde...");
+
+      const result = await captureAllAvailable(senderName, cleanPhoneNumber);
+      
+      if (result.error) {
+        await message.reply(result.error);
+      } else {
+        // Envia todas as imagens dos Pokémon capturados
+        for (const imageUrl of result.imageUrls) {
+          let media;
+          if (imageUrl.startsWith('http')) {
+            media = await MessageMedia.fromUrl(imageUrl);
+          } else {
+            const fs = await import('fs/promises');
+            const buffer = await fs.readFile(imageUrl);
+            media = new MessageMedia('image/jpeg', buffer.toString('base64'), `pokemon.jpg`);
+          }
+          await client.sendMessage(message.from, media, { caption: "Pokémon capturado!" });
+        }
+
+        // Envia o resumo após todas as imagens
+        await message.reply(result.message);
+        
+        if (result.capturedCount > 0) {
+          await message.reply("Use !pokedex para ver seus novos Pokémon!");
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao capturar todos os Pokémon:", error);
+      await message.reply("Desculpe, ocorreu um erro inesperado ao tentar capturar todos os Pokémon. Tente novamente mais tarde.");
     }
   }
 
