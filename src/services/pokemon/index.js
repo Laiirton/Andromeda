@@ -5,7 +5,8 @@ import {
   tradeForCaptures,
   getUserSacrificeStatus,
   sacrificePokemon,
-  getUserTradeStatus // Adicione esta linha
+  getUserTradeStatus,
+  captureAllAvailable // Adicione esta linha
 } from './capture.js';
 import { chooseCompanion } from './companion.js';
 import { initiateTrade, respondToTrade, getPendingTradeForUser, getPendingTradesForUser } from './trade.js';
@@ -22,5 +23,6 @@ export {
   tradeForCaptures,
   getUserSacrificeStatus,
   sacrificePokemon,
-  getUserTradeStatus // Certifique-se de que esta linha está presente
+  getUserTradeStatus,
+  captureAllAvailable // Adicione esta linha
 };
