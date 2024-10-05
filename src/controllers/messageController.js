@@ -43,6 +43,7 @@ import { generateRandomResponse } from "../services/randomChat/randomChatService
 import { toggleRandomChat } from "../services/randomChat/randomChatState.js";
 import { storeMessage } from "../services/randomChat/messageStore.js";
 import { handleRandomChat, processRandomChat } from "../services/randomChat/randomChatHandler.js";
+import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
@@ -113,6 +114,17 @@ class MessageController {
       toprank: () => handleTopRankCommand(client, message),
       randomchat: () => handleRandomChat(message),
       capturarall: () => this.handleCaptureAll(client, message, senderName),
+      resetcapturetime: () => this.handleResetCaptureTime(client, message, senderName),
+      resetme: async () => {
+        const phoneNumber = message.author || message.from.split('@')[0];
+        const result = await resetCaptureTime(phoneNumber);
+        if (result.error) {
+          await message.reply(result.error);
+        } else {
+          await message.reply(result.message);
+        }
+      },
+      captureall: () => this.handleCaptureAll(client, message, senderName),
     };
 
     const handler = commandHandlers[command];
@@ -167,9 +179,7 @@ class MessageController {
           const buffer = await fs.readFile(result.imageUrl);
           media = new MessageMedia('image/jpeg', buffer.toString('base64'), `${result.name}.jpg`);
         }
-        const shinyStatus = result.isShiny ? "✨ Shiny ✨" : "normal";
-        const rarityStatus = result.isLegendary ? "Lendário" : (result.isMythical ? "Mítico" : "");
-        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${shinyStatus}${rarityStatus ? ` (${rarityStatus})` : ''}!`;
+        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${result.pokemonStatus}!`;
         caption += `\nVocê tem ${result.remainingCaptures} capturas restantes nesta hora.`;
         
         await client.sendMessage(message.from, media, { caption });
@@ -500,40 +510,30 @@ class MessageController {
   }
 
   static async handleCaptureAll(client, message, senderName) {
+    const phoneNumber = message.from;
+    const result = await captureAllAvailable(client, senderName, phoneNumber);
+    if (result.error) {
+      await message.reply(result.error);
+    } else {
+      await message.reply(result.message);
+    }
+  }
+
+  static async handleResetCaptureTime(client, message, senderName) {
     try {
       const phoneNumber = message.author || message.from.split('@')[0];
       const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
       
-      await message.reply("Iniciando captura de todos os Pokémon disponíveis. Por favor, aguarde...");
-
-      const result = await captureAllAvailable(senderName, cleanPhoneNumber);
+      const result = await resetCaptureTime(cleanPhoneNumber);
       
       if (result.error) {
         await message.reply(result.error);
       } else {
-        // Envia todas as imagens dos Pokémon capturados
-        for (const imageUrl of result.imageUrls) {
-          let media;
-          if (imageUrl.startsWith('http')) {
-            media = await MessageMedia.fromUrl(imageUrl);
-          } else {
-            const fs = await import('fs/promises');
-            const buffer = await fs.readFile(imageUrl);
-            media = new MessageMedia('image/jpeg', buffer.toString('base64'), `pokemon.jpg`);
-          }
-          await client.sendMessage(message.from, media, { caption: "Pokémon capturado!" });
-        }
-
-        // Envia o resumo após todas as imagens
         await message.reply(result.message);
-        
-        if (result.capturedCount > 0) {
-          await message.reply("Use !pokedex para ver seus novos Pokémon!");
-        }
       }
     } catch (error) {
-      console.error("Erro ao capturar todos os Pokémon:", error);
-      await message.reply("Desculpe, ocorreu um erro inesperado ao tentar capturar todos os Pokémon. Tente novamente mais tarde.");
+      console.error("Erro ao resetar tempo de captura:", error);
+      await message.reply("Desculpe, ocorreu um erro inesperado ao tentar resetar o tempo de captura. Tente novamente mais tarde.");
     }
   }
 
