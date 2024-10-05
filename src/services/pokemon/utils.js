@@ -1,25 +1,12 @@
-// Lista de Pokémon lendários e míticos
-const legendaryPokemon = [
-  "articuno", "zapdos", "moltres", "mewtwo", "mew",
-  // Adicione mais Pokémon lendários aqui...
-];
+import fs from 'fs';
+import path from 'path';
 
-const mythicalPokemon = [
-  "celebi", "jirachi", "deoxys", "manaphy", "darkrai",
-  // Adicione mais Pokémon míticos aqui...
-];
 
 export function getRarityChance(pokemonName) {
-  if (isPokemonLegendary(pokemonName) || isPokemonMythical(pokemonName)) {
-    return 0.05; // 5% de chance para Pokémon lendários e míticos
+  if (isPokemonLegendary(pokemonName)) {
+    return 0.01; // 1% de chance para lendários
+  } else if (isPokemonMythical(pokemonName)) {
+    return 0.005; // 0.5% de chance para míticos
   }
-  return 1; // 100% de chance para Pokémon comuns
-}
-
-export function isPokemonLegendary(pokemonName) {
-  return legendaryPokemon.includes(pokemonName.toLowerCase());
-}
-
-export function isPokemonMythical(pokemonName) {
-  return mythicalPokemon.includes(pokemonName.toLowerCase());
+  return 1; // 100% de chance para Pokémon normais
 }
