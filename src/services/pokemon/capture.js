@@ -2,7 +2,7 @@ import { getPokemon } from "pkmonjs";
 import axios from 'axios';
 import fs from 'fs';
 import { createCanvas, loadImage } from 'canvas';
-import { getRarityChance, isPokemonLegendary, isPokemonMythical } from './utils.js';
+import { getRarityChance } from './utils.js';
 import { 
   getOrCreateUser, 
   getUserCaptureInfo, 
@@ -14,6 +14,9 @@ import { getCompanionProgress, evolveCompanion } from './companion.js';
 import { createPokedexImage } from './pokedex.js';
 import { checkAndUpdateCaptureLimit, getRemainingCaptures, getTradeStatus } from './captureLimits.js';
 import { sacrificePokemon as sacrificePokemonLimit } from './captureLimits.js';
+import { fetchPokemonData, getRarityLabel } from './pokemonRarity.js';
+import pkg from 'whatsapp-web.js';
+const { MessageMedia } = pkg;
 
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
@@ -57,31 +60,18 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
     while (!pokemon && attempts < MAX_FETCH_ATTEMPTS) {
       const randomId = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
       try {
-        const tempPokemon = await getPokemon(randomId);
-        const rarityChance = getRarityChance(tempPokemon.name);
-        
-        if (Math.random() < rarityChance) {
-          pokemon = tempPokemon;
-          isShiny = Math.random() < SHINY_CHANCE;
-        }
+        pokemon = await fetchPokemonData(randomId.toString());
+        isShiny = Math.random() < SHINY_CHANCE;
       } catch (error) {
         console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
-        const tempPokemon = await fetchPokemonFromPokeAPI(randomId);
-        if (tempPokemon) {
-          const rarityChance = getRarityChance(tempPokemon.name);
-          if (Math.random() < rarityChance) {
-            pokemon = tempPokemon;
-            isShiny = Math.random() < SHINY_CHANCE;
-          }
-        }
       }
       attempts++;
     }
 
     if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
 
-    const { name, image } = pokemon;
-    let imageUrl = image.default || image;
+    const { name, image, isLegendary, isMythical } = pokemon;
+    let imageUrl = image;
 
     if (isShiny) {
       const shinyImagePath = `./assets/shiny_pokemon_images/${name}.jpg`;
@@ -91,9 +81,6 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
         console.warn(`Imagem shiny não encontrada para ${name}, usando imagem normal.`);
       }
     }
-
-    const isLegendary = isPokemonLegendary(name);
-    const isMythical = isPokemonMythical(name);
 
     const savedPokemon = await savePokemonToSupabase(user.id, name, imageUrl, isShiny, isLegendary, isMythical);
     if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
@@ -120,13 +107,25 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
       }
     }
 
-    console.log(`Novo Pokémon capturado: ${name} (${isShiny ? 'Shiny' : 'Normal'})`);
+    let pokemonStatus = isShiny ? "✨ Shiny ✨" : "";
+    if (isLegendary) {
+      pokemonStatus += pokemonStatus ? " " : "";
+      pokemonStatus += "🌟 Lendário 🌟";
+    } else if (isMythical) {
+      pokemonStatus += pokemonStatus ? " " : "";
+      pokemonStatus += "🎭 Mítico 🎭";
+    } else if (!isShiny) {
+      pokemonStatus = "Normal";
+    }
+
+    console.log(`Novo Pokémon capturado: ${name} (${pokemonStatus})`);
     return { 
       name, 
       imageUrl, 
       isShiny,
       isLegendary,
       isMythical,
+      pokemonStatus,
       companionEvolution,
       companionImage,
       remainingCaptures
@@ -360,7 +359,7 @@ export async function getUserTradeStatus(senderName, phoneNumber) {
   }
 }
 
-export async function captureAllAvailable(senderName, phoneNumber) {
+export async function captureAllAvailable(client, senderName, phoneNumber) {
   try {
     const user = await getOrCreateUser(senderName, phoneNumber);
     if (!user) throw new Error('Não foi possível criar ou obter o usuário');
@@ -371,22 +370,25 @@ export async function captureAllAvailable(senderName, phoneNumber) {
     let imageUrls = [];
 
     while (remainingCaptures > 0) {
-      const result = await getRandomPokemonNameAndImage(senderName, phoneNumber);
-      
-      if (result.error) {
-        errors.push(result.error);
+      try {
+        const randomId = Math.floor(Math.random() * 898) + 1;
+        const pokemon = await fetchPokemonData(randomId.toString());
+
+        console.log(`Capturado: ${pokemon.name}, Lendário: ${pokemon.isLegendary}, Mítico: ${pokemon.isMythical}`);
+
+        capturedPokemon.push({
+          name: pokemon.name,
+          isShiny: Math.random() < SHINY_CHANCE,
+          isLegendary: pokemon.isLegendary,
+          isMythical: pokemon.isMythical,
+          imageUrl: pokemon.image
+        });
+
+        remainingCaptures--;
+      } catch (error) {
+        errors.push(error.message);
         break;
       }
-
-      capturedPokemon.push({
-        name: result.name,
-        isShiny: result.isShiny,
-        isLegendary: result.isLegendary,
-        isMythical: result.isMythical
-      });
-      imageUrls.push(result.imageUrl);
-
-      remainingCaptures--;
     }
 
     const totalCaptured = capturedPokemon.length;
@@ -401,13 +403,25 @@ export async function captureAllAvailable(senderName, phoneNumber) {
 
     if (capturedPokemon.length > 0) {
       summaryMessage += "Pokémon capturados:\n";
-      capturedPokemon.forEach(pokemon => {
+      for (const pokemon of capturedPokemon) {
         let pokemonInfo = pokemon.name;
         if (pokemon.isShiny) pokemonInfo += " ✨";
         if (pokemon.isLegendary) pokemonInfo += " 🌟";
         if (pokemon.isMythical) pokemonInfo += " 🎭";
         summaryMessage += `${pokemonInfo}\n`;
-      });
+
+        // Enviar imagem do Pokémon com legenda
+        let media;
+        if (pokemon.imageUrl.startsWith('http')) {
+          media = await MessageMedia.fromUrl(pokemon.imageUrl);
+        } else {
+          const fs = await import('fs/promises');
+          const buffer = await fs.readFile(pokemon.imageUrl);
+          media = new MessageMedia('image/jpeg', buffer.toString('base64'), `${pokemon.name}.jpg`);
+        }
+        const caption = `Você capturou um ${pokemonInfo}!`;
+        await client.sendMessage(phoneNumber, media, { caption });
+      }
     }
 
     if (errors.length > 0) {
