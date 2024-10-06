@@ -1,12 +1,13 @@
 import { supabase } from './database.js';
 
-const ADMIN_PHONE_NUMBER = '5521965020791';
+const ADMIN_PHONE_NUMBERS = ['5521965020791', '5522997858959']; // Adicione aqui os números de telefone dos administradores
 
-export async function resetCaptureTime(phoneNumber) {
-  // Remova todos os caracteres não numéricos do número de telefone
-  const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+export async function resetCaptureTime(adminPhoneNumber, targetPhoneNumber) {
+  // Remova todos os caracteres não numéricos dos números de telefone
+  const cleanAdminNumber = adminPhoneNumber.replace(/\D/g, '');
+  const cleanTargetNumber = targetPhoneNumber.replace(/\D/g, '');
 
-  if (cleanPhoneNumber !== ADMIN_PHONE_NUMBER) {
+  if (!ADMIN_PHONE_NUMBERS.includes(cleanAdminNumber)) {
     return { error: 'Você não tem permissão para usar este comando.' };
   }
 
@@ -14,13 +15,13 @@ export async function resetCaptureTime(phoneNumber) {
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('phone_number', cleanPhoneNumber)
+      .eq('phone_number', cleanTargetNumber)
       .single();
 
     if (userError) throw userError;
 
     if (!user) {
-      return { error: 'Usuário não encontrado.' };
+      return { error: 'Usuário alvo não encontrado.' };
     }
 
     const { error: updateError } = await supabase
@@ -33,7 +34,7 @@ export async function resetCaptureTime(phoneNumber) {
 
     if (updateError) throw updateError;
 
-    return { message: 'Tempo de captura resetado com sucesso!' };
+    return { message: `Tempo de captura resetado com sucesso para o usuário ${cleanTargetNumber}!` };
   } catch (error) {
     console.error('Erro ao resetar tempo de captura:', error);
     return { error: 'Ocorreu um erro ao resetar o tempo de captura.' };
