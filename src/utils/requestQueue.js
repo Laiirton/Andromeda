@@ -1,6 +1,6 @@
 import Queue from 'queue';
 
-const q = new Queue({ autostart: true, concurrency: 1 });
+const q = new Queue({ autostart: true, concurrency: 3 }); // Ajuste o número conforme necessário
 
 export function addToQueue(task) {
   return new Promise((resolve, reject) => {
