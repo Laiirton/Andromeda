@@ -15,6 +15,7 @@ import { createPokedexImage } from './pokedex.js';
 import { checkAndUpdateCaptureLimit, getRemainingCaptures, getTradeStatus, updateCapturesRemaining, sacrificePokemon as sacrificePokemonLimit } from './captureLimits.js';
 import { fetchPokemonData, getRarityLabel } from './pokemonRarity.js';
 import pkg from 'whatsapp-web.js';
+import { addToQueue } from '../../utils/requestQueue.js';
 const { MessageMedia } = pkg;
 
 const MAX_POKEMON_ID = 898;
@@ -36,103 +37,105 @@ async function fetchPokemonFromPokeAPI(id) {
 }
 
 export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
-  try {
-    const user = await getOrCreateUser(senderName, phoneNumber);
-    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
+  return addToQueue(async () => {
+    try {
+      const user = await getOrCreateUser(senderName, phoneNumber);
+      if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    const { canCapture, remainingCaptures, nextCaptureTime } = await checkAndUpdateCaptureLimit(user.id, user.username);
+      const { canCapture, remainingCaptures, nextCaptureTime } = await checkAndUpdateCaptureLimit(user.id, user.username);
 
-    if (!canCapture) {
-      const timeUntilNextCapture = nextCaptureTime - new Date();
-      const minutesUntilNextCapture = Math.ceil(timeUntilNextCapture / (60 * 1000));
-      return { 
-        error: `Você atingiu o limite de capturas. Poderá capturar novamente em ${minutesUntilNextCapture} minutos.`,
-        remainingCaptures,
-        nextCaptureTime
-      };
-    }
-
-    let pokemon = null;
-    let isShiny = false;
-    let attempts = 0;
-    
-    while (!pokemon && attempts < MAX_FETCH_ATTEMPTS) {
-      const randomId = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
-      try {
-        pokemon = await fetchPokemonData(randomId.toString());
-        isShiny = Math.random() < SHINY_CHANCE;
-      } catch (error) {
-        console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
+      if (!canCapture) {
+        const timeUntilNextCapture = nextCaptureTime - new Date();
+        const minutesUntilNextCapture = Math.ceil(timeUntilNextCapture / (60 * 1000));
+        return { 
+          error: `Você atingiu o limite de capturas. Poderá capturar novamente em ${minutesUntilNextCapture} minutos.`,
+          remainingCaptures,
+          nextCaptureTime
+        };
       }
-      attempts++;
-    }
 
-    if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
-
-    const { name, image, isLegendary, isMythical } = pokemon;
-    let imageUrl = image;
-
-    if (isShiny) {
-      const shinyImagePath = `./assets/shiny_pokemon_images/${name}.jpg`;
-      if (fs.existsSync(shinyImagePath)) {
-        imageUrl = shinyImagePath;
-      } else {
-        console.warn(`Imagem shiny não encontrada para ${name}, usando imagem normal.`);
+      let pokemon = null;
+      let isShiny = false;
+      let attempts = 0;
+      
+      while (!pokemon && attempts < MAX_FETCH_ATTEMPTS) {
+        const randomId = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
+        try {
+          pokemon = await fetchPokemonData(randomId.toString());
+          isShiny = Math.random() < SHINY_CHANCE;
+        } catch (error) {
+          console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
+        }
+        attempts++;
       }
-    }
 
-    const savedPokemon = await savePokemonToSupabase(user.id, name, imageUrl, isShiny, isLegendary, isMythical);
-    if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
+      if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
 
-    const companion = await getCompanionProgress(user.id);
-    let companionEvolution = null;
-    let companionImage = null;
+      const { name, image, isLegendary, isMythical } = pokemon;
+      let imageUrl = image;
 
-    if (companion) {
-      companion.capture_count += 1;
-      await updateUserCaptureInfo(user.id, companion.capture_count, null);
-
-      if (companion.capture_count >= EVOLUTION_THRESHOLD) {
-        const evolutionResult = await evolveCompanion(user.id);
-        if (evolutionResult.error) {
-          console.error('Erro ao evoluir companheiro:', evolutionResult.error);
-        } else if (evolutionResult.message) {
-          console.log(evolutionResult.message);
+      if (isShiny) {
+        const shinyImagePath = `./assets/shiny_pokemon_images/${name}.jpg`;
+        if (fs.existsSync(shinyImagePath)) {
+          imageUrl = shinyImagePath;
         } else {
-          console.log(`Companheiro evoluiu para ${evolutionResult.evolutionName}`);
-          companionEvolution = `Seu companheiro evoluiu para ${evolutionResult.evolutionName}!`;
-          companionImage = evolutionResult.evolutionImage;
+          console.warn(`Imagem shiny não encontrada para ${name}, usando imagem normal.`);
         }
       }
-    }
 
-    let pokemonStatus = isShiny ? "✨ Shiny ✨" : "";
-    if (isLegendary) {
-      pokemonStatus += pokemonStatus ? " " : "";
-      pokemonStatus += "🌟 Lendário 🌟";
-    } else if (isMythical) {
-      pokemonStatus += pokemonStatus ? " " : "";
-      pokemonStatus += "🎭 Mítico 🎭";
-    } else if (!isShiny) {
-      pokemonStatus = "Normal";
-    }
+      const savedPokemon = await savePokemonToSupabase(user.id, name, imageUrl, isShiny, isLegendary, isMythical);
+      if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
 
-    console.log(`Novo Pokémon capturado: ${name} (${pokemonStatus})`);
-    return { 
-      name, 
-      imageUrl, 
-      isShiny,
-      isLegendary,
-      isMythical,
-      pokemonStatus,
-      companionEvolution,
-      companionImage,
-      remainingCaptures
-    };
-  } catch (error) {
-    console.error('Erro ao obter Pokémon:', error);
-    return { error: error.message || 'Erro inesperado ao obter Pokémon' };
-  }
+      const companion = await getCompanionProgress(user.id);
+      let companionEvolution = null;
+      let companionImage = null;
+
+      if (companion) {
+        companion.capture_count += 1;
+        await updateUserCaptureInfo(user.id, companion.capture_count, null);
+
+        if (companion.capture_count >= EVOLUTION_THRESHOLD) {
+          const evolutionResult = await evolveCompanion(user.id);
+          if (evolutionResult.error) {
+            console.error('Erro ao evoluir companheiro:', evolutionResult.error);
+          } else if (evolutionResult.message) {
+            console.log(evolutionResult.message);
+          } else {
+            console.log(`Companheiro evoluiu para ${evolutionResult.evolutionName}`);
+            companionEvolution = `Seu companheiro evoluiu para ${evolutionResult.evolutionName}!`;
+            companionImage = evolutionResult.evolutionImage;
+          }
+        }
+      }
+
+      let pokemonStatus = isShiny ? "✨ Shiny ✨" : "";
+      if (isLegendary) {
+        pokemonStatus += pokemonStatus ? " " : "";
+        pokemonStatus += "🌟 Lendário 🌟";
+      } else if (isMythical) {
+        pokemonStatus += pokemonStatus ? " " : "";
+        pokemonStatus += "🎭 Mítico 🎭";
+      } else if (!isShiny) {
+        pokemonStatus = "Normal";
+      }
+
+      console.log(`Novo Pokémon capturado: ${name} (${pokemonStatus})`);
+      return { 
+        name, 
+        imageUrl, 
+        isShiny,
+        isLegendary,
+        isMythical,
+        pokemonStatus,
+        companionEvolution,
+        companionImage,
+        remainingCaptures
+      };
+    } catch (error) {
+      console.error('Erro ao obter Pokémon:', error);
+      return { error: error.message || 'Erro inesperado ao obter Pokémon' };
+    }
+  });
 }
 
 export async function getUserPokemon(senderName, phoneNumber, page = 1, itemsPerPage = 40) {
@@ -359,56 +362,62 @@ export async function getUserTradeStatus(senderName, phoneNumber) {
 }
 
 export async function captureAllAvailable(client, message, username, phoneNumber, availableCaptures) {
-  try {
-    let capturedCount = 0;
-    let captureResults = [];
-    let failedMessages = 0;
+  return addToQueue(async () => {
+    try {
+      let capturedCount = 0;
+      let captureResults = [];
+      let failedMessages = 0;
 
-    for (let i = 0; i < availableCaptures; i++) {
-      const result = await getRandomPokemonNameAndImage(username, phoneNumber);
-      if (result.error) {
-        break; // Se houver um erro (como limite atingido), pare o loop
+      for (let i = 0; i < availableCaptures; i++) {
+        const result = await getRandomPokemonNameAndImage(username, phoneNumber);
+        if (result.error) {
+          console.error('Erro ao capturar Pokémon:', result.error);
+          break;
+        }
+        capturedCount++;
+        captureResults.push(result);
       }
-      capturedCount++;
-      captureResults.push(result);
-    }
 
-    // Atualizar o número de capturas restantes
-    const user = await getOrCreateUser(username, phoneNumber);
-    const remainingCaptures = await updateCapturesRemaining(user.id, capturedCount);
-
-    // Preparar a mensagem inicial
-    let captureMessage = `@${username} capturou ${capturedCount} Pokémon:\n\n`;
-
-    // Enviar imagens e informações de cada Pokémon capturado
-    for (const result of captureResults) {
-      try {
-        const media = await MessageMedia.fromUrl(result.imageUrl);
-        const caption = `${result.name} ${result.pokemonStatus}`;
-        await client.sendMessage(message.from, media, { caption });
-      } catch (error) {
-        console.error(`Erro ao enviar imagem para ${result.name}:`, error);
-        failedMessages++;
-        captureMessage += `- ${result.name} ${result.pokemonStatus} (Falha ao enviar imagem)\n`;
+      const user = await getOrCreateUser(username, phoneNumber);
+      if (!user) {
+        throw new Error('Não foi possível criar ou obter o usuário');
       }
+
+      const remainingCaptures = await updateCapturesRemaining(user.id, capturedCount);
+
+      let captureMessage = `@${username} capturou ${capturedCount} Pokémon:\n\n`;
+
+      for (const result of captureResults) {
+        try {
+          const media = await MessageMedia.fromUrl(result.imageUrl);
+          const caption = `${result.name} ${result.pokemonStatus}`;
+          await client.sendMessage(message.from, media, { caption });
+        } catch (error) {
+          console.error(`Erro ao enviar imagem para ${result.name}:`, error);
+          failedMessages++;
+          captureMessage += `- ${result.name} ${result.pokemonStatus} (Falha ao enviar imagem)\n`;
+        }
+      }
+
+      captureMessage += `\nVocê tem ${remainingCaptures} capturas restantes.`;
+
+      const chat = await message.getChat();
+      await chat.sendMessage(captureMessage, { mentions: [await chat.getContact()] });
+
+      console.log(`Captura em massa concluída para ${username}. Capturados: ${capturedCount}, Falhas: ${failedMessages}`);
+
+      return {
+        message: captureMessage,
+        capturedCount,
+        remainingCaptures,
+        failedMessages
+      };
+    } catch (error) {
+      console.error("Erro ao capturar todos os Pokémon disponíveis:", error);
+      await message.reply("Ocorreu um erro ao capturar os Pokémon. Tente novamente mais tarde.");
+      return { error: "Ocorreu um erro ao capturar os Pokémon. Tente novamente mais tarde." };
     }
-
-    captureMessage += `\nVocê tem ${remainingCaptures} capturas restantes.`;
-
-    // Enviar a mensagem final marcada
-    const chat = await message.getChat();
-    await chat.sendMessage(captureMessage, { mentions: [await chat.getContact()] });
-
-    return {
-      message: captureMessage,
-      capturedCount,
-      remainingCaptures,
-      failedMessages
-    };
-  } catch (error) {
-    console.error("Erro ao capturar todos os Pokémon disponíveis:", error);
-    return { error: "Ocorreu um erro ao capturar os Pokémon. Tente novamente mais tarde." };
-  }
+  });
 }
 
 function formatPhoneNumber(phoneNumber) {
