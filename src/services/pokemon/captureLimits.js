@@ -156,6 +156,24 @@ export async function getRemainingCaptures(userId, username) {
   }
 }
 
+export async function getCapturesRemaining(userId, username) {
+  try {
+    const userLimit = await getUserCaptureLimit(userId, username);
+    const currentTime = new Date();
+    const lastCaptureTime = new Date(userLimit.last_capture_time);
+    const timeDifference = currentTime - lastCaptureTime;
+
+    if (timeDifference >= RESET_TIME) {
+      return userLimit.captures_per_hour + userLimit.extra_captures;
+    }
+
+    return Math.max(0, userLimit.captures_per_hour + userLimit.extra_captures - userLimit.captures_since_last_reset);
+  } catch (error) {
+    console.error('Erro ao obter capturas restantes:', error);
+    throw error;
+  }
+}
+
 export async function getTradeStatus(userId, username) {
   try {
     const userLimit = await getUserCaptureLimit(userId, username);
@@ -221,6 +239,35 @@ export async function sacrificePokemon(userId, username, pokemonName) {
     }
   } catch (error) {
     console.error('Erro ao sacrificar Pokémon:', error);
+    throw error;
+  }
+}
+
+export async function updateCapturesRemaining(userId, capturesUsed) {
+  try {
+    const { data: userLimit, error: limitError } = await supabase
+      .from('user_capture_limits')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (limitError) throw limitError;
+
+    const newCapturesSinceLastReset = userLimit.captures_since_last_reset + capturesUsed;
+    const remainingCaptures = Math.max(0, userLimit.captures_per_hour + userLimit.extra_captures - newCapturesSinceLastReset);
+
+    const { error: updateError } = await supabase
+      .from('user_capture_limits')
+      .update({ 
+        captures_since_last_reset: newCapturesSinceLastReset
+      })
+      .eq('user_id', userId);
+
+    if (updateError) throw updateError;
+
+    return remainingCaptures;
+  } catch (error) {
+    console.error('Erro ao atualizar capturas restantes:', error);
     throw error;
   }
 }

@@ -12,8 +12,7 @@ import {
 } from './database.js';
 import { getCompanionProgress, evolveCompanion } from './companion.js';
 import { createPokedexImage } from './pokedex.js';
-import { checkAndUpdateCaptureLimit, getRemainingCaptures, getTradeStatus } from './captureLimits.js';
-import { sacrificePokemon as sacrificePokemonLimit } from './captureLimits.js';
+import { checkAndUpdateCaptureLimit, getRemainingCaptures, getTradeStatus, updateCapturesRemaining, sacrificePokemon as sacrificePokemonLimit } from './captureLimits.js';
 import { fetchPokemonData, getRarityLabel } from './pokemonRarity.js';
 import pkg from 'whatsapp-web.js';
 const { MessageMedia } = pkg;
@@ -359,85 +358,66 @@ export async function getUserTradeStatus(senderName, phoneNumber) {
   }
 }
 
-export async function captureAllAvailable(client, senderName, phoneNumber) {
+export async function captureAllAvailable(client, message, username, phoneNumber, availableCaptures) {
   try {
-    const user = await getOrCreateUser(senderName, phoneNumber);
-    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
+    let capturedCount = 0;
+    let captureResults = [];
+    let failedMessages = 0;
 
-    let remainingCaptures = await getRemainingCaptures(user.id, user.username);
-    let capturedPokemon = [];
-    let errors = [];
-    let imageUrls = [];
+    for (let i = 0; i < availableCaptures; i++) {
+      const result = await getRandomPokemonNameAndImage(username, phoneNumber);
+      if (result.error) {
+        break; // Se houver um erro (como limite atingido), pare o loop
+      }
+      capturedCount++;
+      captureResults.push(result);
+    }
 
-    while (remainingCaptures > 0) {
+    // Atualizar o número de capturas restantes
+    const user = await getOrCreateUser(username, phoneNumber);
+    const remainingCaptures = await updateCapturesRemaining(user.id, capturedCount);
+
+    // Preparar a mensagem inicial
+    let captureMessage = `@${username} capturou ${capturedCount} Pokémon:\n\n`;
+
+    // Enviar imagens e informações de cada Pokémon capturado
+    for (const result of captureResults) {
       try {
-        const randomId = Math.floor(Math.random() * 898) + 1;
-        const pokemon = await fetchPokemonData(randomId.toString());
-
-        console.log(`Capturado: ${pokemon.name}, Lendário: ${pokemon.isLegendary}, Mítico: ${pokemon.isMythical}`);
-
-        capturedPokemon.push({
-          name: pokemon.name,
-          isShiny: Math.random() < SHINY_CHANCE,
-          isLegendary: pokemon.isLegendary,
-          isMythical: pokemon.isMythical,
-          imageUrl: pokemon.image
-        });
-
-        remainingCaptures--;
+        const media = await MessageMedia.fromUrl(result.imageUrl);
+        const caption = `${result.name} ${result.pokemonStatus}`;
+        await client.sendMessage(message.from, media, { caption });
       } catch (error) {
-        errors.push(error.message);
-        break;
+        console.error(`Erro ao enviar imagem para ${result.name}:`, error);
+        failedMessages++;
+        captureMessage += `- ${result.name} ${result.pokemonStatus} (Falha ao enviar imagem)\n`;
       }
     }
 
-    const totalCaptured = capturedPokemon.length;
-    const shinyCaptured = capturedPokemon.filter(p => p.isShiny).length;
-    const legendaryCaptured = capturedPokemon.filter(p => p.isLegendary).length;
-    const mythicalCaptured = capturedPokemon.filter(p => p.isMythical).length;
+    captureMessage += `\nVocê tem ${remainingCaptures} capturas restantes.`;
 
-    let summaryMessage = `Você capturou ${totalCaptured} Pokémon!\n`;
-    summaryMessage += `✨ Shiny: ${shinyCaptured}\n`;
-    summaryMessage += `🌟 Lendários: ${legendaryCaptured}\n`;
-    summaryMessage += `🎭 Míticos: ${mythicalCaptured}\n\n`;
+    // Enviar a mensagem final marcada
+    const chat = await message.getChat();
+    await chat.sendMessage(captureMessage, { mentions: [await chat.getContact()] });
 
-    if (capturedPokemon.length > 0) {
-      summaryMessage += "Pokémon capturados:\n";
-      for (const pokemon of capturedPokemon) {
-        let pokemonInfo = pokemon.name;
-        if (pokemon.isShiny) pokemonInfo += " ✨";
-        if (pokemon.isLegendary) pokemonInfo += " 🌟";
-        if (pokemon.isMythical) pokemonInfo += " 🎭";
-        summaryMessage += `${pokemonInfo}\n`;
-
-        // Enviar imagem do Pokémon com legenda
-        let media;
-        if (pokemon.imageUrl.startsWith('http')) {
-          media = await MessageMedia.fromUrl(pokemon.imageUrl);
-        } else {
-          const fs = await import('fs/promises');
-          const buffer = await fs.readFile(pokemon.imageUrl);
-          media = new MessageMedia('image/jpeg', buffer.toString('base64'), `${pokemon.name}.jpg`);
-        }
-        const caption = `Você capturou um ${pokemonInfo}!`;
-        await client.sendMessage(phoneNumber, media, { caption });
-      }
-    }
-
-    if (errors.length > 0) {
-      summaryMessage += "\nErros encontrados:\n";
-      errors.forEach(error => {
-        summaryMessage += `${error}\n`;
-      });
-    }
-
-    return { 
-      message: summaryMessage, 
-      capturedCount: totalCaptured,
-      imageUrls: imageUrls
+    return {
+      message: captureMessage,
+      capturedCount,
+      remainingCaptures,
+      failedMessages
     };
   } catch (error) {
-    console.error('Erro ao capturar todos os Pokémon disponíveis:', error);
-    return { error: error.message || 'Erro inesperado ao capturar Pokémon' };
+    console.error("Erro ao capturar todos os Pokémon disponíveis:", error);
+    return { error: "Ocorreu um erro ao capturar os Pokémon. Tente novamente mais tarde." };
   }
+}
+
+function formatPhoneNumber(phoneNumber) {
+  // Remover todos os caracteres não numéricos
+  const cleanNumber = phoneNumber.replace(/\D/g, '');
+  
+  // Adicionar o código do país (assumindo que é o Brasil - 55) se não estiver presente
+  const formattedNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`;
+  
+  // Adicionar '@c.us' no final para o formato do WhatsApp
+  return `${formattedNumber}@c.us`;
 }

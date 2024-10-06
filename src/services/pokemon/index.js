@@ -6,10 +6,18 @@ import {
   getUserSacrificeStatus,
   sacrificePokemon,
   getUserTradeStatus,
-  captureAllAvailable // Adicione esta linha
+  captureAllAvailable
 } from './capture.js';
 import { chooseCompanion } from './companion.js';
 import { initiateTrade, respondToTrade, getPendingTradeForUser, getPendingTradesForUser } from './trade.js';
+import { getOrCreateUser } from './database.js';
+import { 
+  checkAndUpdateCaptureLimit, 
+  getRemainingCaptures, 
+  getTradeStatus, 
+  getCapturesRemaining,
+  updateCapturesRemaining
+} from './captureLimits.js';
 
 export {
   getRandomPokemonNameAndImage,
@@ -24,5 +32,11 @@ export {
   getUserSacrificeStatus,
   sacrificePokemon,
   getUserTradeStatus,
-  captureAllAvailable // Adicione esta linha
+  captureAllAvailable,
+  getOrCreateUser,
+  checkAndUpdateCaptureLimit,
+  getRemainingCaptures,
+  getTradeStatus,
+  getCapturesRemaining,
+  updateCapturesRemaining
 };
