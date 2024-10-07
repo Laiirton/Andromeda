@@ -96,7 +96,6 @@ class MessageController {
       level: () => handleLevelCommand(message),
       toprank: () => handleTopRankCommand(client, message),
       randomchat: () => handleRandomChat(message),
-      capturarall: () => PokemonController.handleCaptureAll(client, message, senderName),
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       resetme: async () => {
         const phoneNumber = message.author || message.from.split('@')[0];
