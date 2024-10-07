@@ -97,15 +97,6 @@ class MessageController {
       toprank: () => handleTopRankCommand(client, message),
       randomchat: () => handleRandomChat(message),
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
-      resetme: async () => {
-        const phoneNumber = message.author || message.from.split('@')[0];
-        const result = await resetCaptureTime(phoneNumber);
-        if (result.error) {
-          await message.reply(result.error);
-        } else {
-          await message.reply(result.message);
-        }
-      },
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
     };
 
