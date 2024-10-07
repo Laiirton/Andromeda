@@ -107,23 +107,53 @@ export async function updateUserCaptureInfo(userId, captureCount, lastCaptureTim
 
 export async function savePokemonToSupabase(userId, pokemonName, pokemonImage, isShiny, isLegendary, isMythical) {
   try {
-    const { data, error } = await supabase
+    // Primeiro, verifique se o Pokémon já existe para este usuário
+    const { data: existingPokemon, error: selectError } = await supabase
       .from('pokemon_generated')
-      .insert([{ 
-        user_id: userId, 
-        pokemon_name: pokemonName, 
-        pokemon_image_url: pokemonImage,
-        is_shiny: isShiny,
-        is_legendary: isLegendary,
-        is_mythical: isMythical
-      }]);
-    
-    if (error) throw error;
-    
-    console.log('Pokémon salvo com sucesso:', { userId, pokemonName, pokemonImage, isShiny, isLegendary, isMythical });
-    return { userId, pokemonName, pokemonImage, isShiny, isLegendary, isMythical };
+      .select('*')
+      .eq('user_id', userId)
+      .eq('pokemon_name', pokemonName)
+      .eq('is_shiny', isShiny)
+      .single();
+
+    if (selectError && selectError.code !== 'PGRST116') throw selectError;
+
+    if (existingPokemon) {
+      // Se o Pokémon já existe, atualize a contagem
+      const { data: updatedPokemon, error: updateError } = await supabase
+        .from('pokemon_generated')
+        .update({ count: existingPokemon.count + 1 })
+        .eq('id', existingPokemon.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      
+      console.log('Pokémon atualizado com sucesso:', updatedPokemon);
+      return updatedPokemon;
+    } else {
+      // Se o Pokémon não existe, insira um novo registro
+      const { data: newPokemon, error: insertError } = await supabase
+        .from('pokemon_generated')
+        .insert([{ 
+          user_id: userId, 
+          pokemon_name: pokemonName, 
+          pokemon_image_url: pokemonImage,
+          is_shiny: isShiny,
+          is_legendary: isLegendary,
+          is_mythical: isMythical,
+          count: 1
+        }])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      
+      console.log('Novo Pokémon salvo com sucesso:', newPokemon);
+      return newPokemon;
+    }
   } catch (error) {
-    console.error('Erro ao salvar Pokémon:', error);
+    console.error('Erro ao salvar ou atualizar Pokémon:', error);
     return null;
   }
 }

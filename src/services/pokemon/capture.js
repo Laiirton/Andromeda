@@ -71,69 +71,51 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
 
       if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
 
-      const { name, image, isLegendary, isMythical } = pokemon;
-      let imageUrl = image;
+      const rarityLabel = getRarityLabel(pokemon);
+      const pokemonStatus = isShiny ? '✨ (Shiny)' : '';
 
-      if (isShiny) {
-        const shinyImagePath = `./assets/shiny_pokemon_images/${name}.jpg`;
-        if (fs.existsSync(shinyImagePath)) {
-          imageUrl = shinyImagePath;
-        } else {
-          console.warn(`Imagem shiny não encontrada para ${name}, usando imagem normal.`);
-        }
-      }
+      const savedPokemon = await savePokemonToSupabase(
+        user.id, 
+        pokemon.name, 
+        pokemon.image, 
+        isShiny, 
+        pokemon.isLegendary, 
+        pokemon.isMythical
+      );
 
-      const savedPokemon = await savePokemonToSupabase(user.id, name, imageUrl, isShiny, isLegendary, isMythical);
-      if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon no banco de dados');
+      if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon capturado');
 
-      const companion = await getCompanionProgress(user.id);
+      const companionProgress = await getCompanionProgress(user.id);
       let companionEvolution = null;
       let companionImage = null;
 
-      if (companion) {
-        companion.capture_count += 1;
-        await updateUserCaptureInfo(user.id, companion.capture_count, null);
-
-        if (companion.capture_count >= EVOLUTION_THRESHOLD) {
+      if (companionProgress) {
+        const newCaptureCount = companionProgress.capture_count + 1;
+        if (newCaptureCount >= EVOLUTION_THRESHOLD) {
           const evolutionResult = await evolveCompanion(user.id);
-          if (evolutionResult.error) {
-            console.error('Erro ao evoluir companheiro:', evolutionResult.error);
-          } else if (evolutionResult.message) {
-            console.log(evolutionResult.message);
-          } else {
-            console.log(`Companheiro evoluiu para ${evolutionResult.evolutionName}`);
-            companionEvolution = `Seu companheiro evoluiu para ${evolutionResult.evolutionName}!`;
+          if (!evolutionResult.error) {
+            companionEvolution = `Parabéns! Seu companheiro ${companionProgress.companion_name} evoluiu para ${evolutionResult.evolutionName}!`;
             companionImage = evolutionResult.evolutionImage;
           }
+        } else {
+          await supabase
+            .from('companions')
+            .update({ capture_count: newCaptureCount })
+            .eq('user_id', user.id);
         }
       }
 
-      let pokemonStatus = isShiny ? "✨ Shiny ✨" : "";
-      if (isLegendary) {
-        pokemonStatus += pokemonStatus ? " " : "";
-        pokemonStatus += "🌟 Lendário 🌟";
-      } else if (isMythical) {
-        pokemonStatus += pokemonStatus ? " " : "";
-        pokemonStatus += "🎭 Mítico 🎭";
-      } else if (!isShiny) {
-        pokemonStatus = "Normal";
-      }
-
-      console.log(`Novo Pokémon capturado: ${name} (${pokemonStatus})`);
-      return { 
-        name, 
-        imageUrl, 
-        isShiny,
-        isLegendary,
-        isMythical,
-        pokemonStatus,
+      return {
+        name: pokemon.name,
+        imageUrl: pokemon.image,
+        pokemonStatus: `${pokemonStatus} (${rarityLabel})`,
+        remainingCaptures,
         companionEvolution,
-        companionImage,
-        remainingCaptures
+        companionImage
       };
     } catch (error) {
-      console.error('Erro ao obter Pokémon:', error);
-      return { error: error.message || 'Erro inesperado ao obter Pokémon' };
+      console.error('Erro ao capturar Pokémon:', error);
+      return { error: error.message || 'Erro inesperado ao capturar Pokémon' };
     }
   });
 }
