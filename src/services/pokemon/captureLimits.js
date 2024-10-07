@@ -164,10 +164,19 @@ export async function getCapturesRemaining(userId, username) {
     const timeDifference = currentTime - lastCaptureTime;
 
     if (timeDifference >= RESET_TIME) {
-      return userLimit.captures_per_hour + userLimit.extra_captures;
+      return {
+        remainingCaptures: userLimit.captures_per_hour + userLimit.extra_captures,
+        nextCaptureTime: null
+      };
     }
 
-    return Math.max(0, userLimit.captures_per_hour + userLimit.extra_captures - userLimit.captures_since_last_reset);
+    const remainingCaptures = Math.max(0, userLimit.captures_per_hour + userLimit.extra_captures - userLimit.captures_since_last_reset);
+    const nextCaptureTime = remainingCaptures === 0 ? new Date(lastCaptureTime.getTime() + RESET_TIME) : null;
+
+    return {
+      remainingCaptures,
+      nextCaptureTime
+    };
   } catch (error) {
     console.error('Erro ao obter capturas restantes:', error);
     throw error;

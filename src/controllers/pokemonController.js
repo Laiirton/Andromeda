@@ -342,18 +342,24 @@ class PokemonController {
         }
 
         // Verificar o número de capturas restantes
-        const capturesRemaining = await getCapturesRemaining(user.id, senderName);
+        const { remainingCaptures, nextCaptureTime } = await getCapturesRemaining(user.id, senderName);
 
-        if (capturesRemaining <= 0) {
-          await message.reply("Você não tem mais capturas disponíveis. Aguarde até que seu limite seja renovado.");
+        if (remainingCaptures <= 0) {
+          if (nextCaptureTime) {
+            const timeUntilNextCapture = nextCaptureTime - new Date();
+            const minutesUntilNextCapture = Math.ceil(timeUntilNextCapture / (60 * 1000));
+            await message.reply(`Você não tem mais capturas disponíveis. Poderá capturar novamente em ${minutesUntilNextCapture} minutos.`);
+          } else {
+            await message.reply("Você não tem mais capturas disponíveis. Aguarde até que seu limite seja renovado.");
+          }
           return;
         }
 
         // Enviar mensagem de início da captura em massa
-        await message.reply(`Iniciando captura em massa para ${senderName}. Capturando ${capturesRemaining} Pokémon...`);
+        await message.reply(`Iniciando captura em massa para ${senderName}. Capturando ${remainingCaptures} Pokémon...`);
 
         // Chamar captureAllAvailable com o número de capturas restantes
-        const result = await captureAllAvailable(client, message, senderName, cleanPhoneNumber, capturesRemaining);
+        const result = await captureAllAvailable(client, message, senderName, cleanPhoneNumber, remainingCaptures);
 
         if (result.error) {
           await message.reply(result.error);
