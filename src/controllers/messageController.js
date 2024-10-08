@@ -126,6 +126,7 @@ class MessageController {
       randomchat: () => handleRandomChat(message),
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
+      stats: () => PokemonController.handlePokemonStats(client, message, senderName, args),
     };
 
     const handler = commandHandlers[command];

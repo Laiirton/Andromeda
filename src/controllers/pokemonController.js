@@ -16,6 +16,7 @@ import {
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import { getCapturesRemaining } from "../services/pokemon/captureLimits.js";
 import { addToQueue } from '../utils/requestQueue.js';
+import { fetchPokemonData } from '../services/pokemon/pokemonRarity.js';
 
 class PokemonController {
   static async handlePokemon(client, message, senderName) {
@@ -394,6 +395,50 @@ class PokemonController {
       console.error("Erro ao resetar tempo de captura:", error);
       await message.reply("Desculpe, ocorreu um erro inesperado ao tentar resetar o tempo de captura. Tente novamente mais tarde.");
     }
+  }
+
+  static async handlePokemonStats(client, message, senderName, args) {
+    return addToQueue(async () => {
+      try {
+        let pokemonName;
+
+        if (args.length > 0) {
+          // Se argumentos foram fornecidos, use-os como nome do Pokémon
+          pokemonName = args.join(' ').toLowerCase();
+        } else {
+          // Se não há argumentos, tente obter o nome do Pokémon da mensagem citada
+          const quotedMessage = await message.getQuotedMessage();
+          if (quotedMessage) {
+            const match = quotedMessage.body.match(/Parabéns,.*! Você capturou um (.*?)(✨)?\s/);
+            if (match) {
+              pokemonName = match[1].toLowerCase();
+            }
+          }
+        }
+
+        if (!pokemonName) {
+          await message.reply("Por favor, forneça o nome de um Pokémon ou cite uma mensagem de captura.");
+          return;
+        }
+
+        const pokemonData = await fetchPokemonData(pokemonName);
+
+        let statsMessage = `*Estatísticas de ${pokemonData.name.charAt(0).toUpperCase() + pokemonData.name.slice(1)}*\n\n`;
+        statsMessage += `*Tipo(s):* ${pokemonData.types.join(', ')}\n`;
+        statsMessage += `*Habilidades:* ${pokemonData.abilities.join(', ')}\n\n`;
+        statsMessage += "*Estatísticas base:*\n";
+        pokemonData.stats.forEach(stat => {
+          statsMessage += `${stat.name.charAt(0).toUpperCase() + stat.name.slice(1)}: ${stat.base_stat}\n`;
+        });
+        statsMessage += `\n*Raridade:* ${pokemonData.isLegendary ? 'Lendário' : pokemonData.isMythical ? 'Mítico' : 'Normal'}`;
+
+        await client.sendMessage(message.from, statsMessage);
+
+      } catch (error) {
+        console.error("Erro ao buscar estatísticas do Pokémon:", error);
+        await message.reply("Ocorreu um erro ao buscar as estatísticas do Pokémon. Verifique se o nome está correto e tente novamente.");
+      }
+    });
   }
 }
 
