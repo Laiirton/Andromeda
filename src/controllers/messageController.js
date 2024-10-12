@@ -92,6 +92,8 @@ class MessageController {
     const senderName = contact.pushname;
     const chat = await message.getChat();
 
+    console.log(`Processando comando: ${command} com argumentos: ${args.join(', ')}`);
+
     const commandHandlers = {
       transcribe: () => this.handleTranscribe(message),
       fig: () => sendSticker(client, message, senderName),
@@ -131,12 +133,20 @@ class MessageController {
 
     const handler = commandHandlers[command];
     if (handler) {
-      if (typeof handler === 'function') {
-        await handler(args);
-      } else {
-        await handler();
+      console.log(`Handler encontrado para o comando: ${command}`);
+      try {
+        if (typeof handler === 'function') {
+          await handler(args);
+        } else {
+          await handler();
+        }
+        console.log(`Comando ${command} executado com sucesso`);
+      } catch (error) {
+        console.error(`Erro ao executar o comando ${command}:`, error);
+        await message.reply(`Ocorreu um erro ao executar o comando ${command}. Por favor, tente novamente mais tarde.`);
       }
     } else {
+      console.log(`Nenhum handler encontrado para o comando: ${command}`);
       // Encontrar o comando mais próximo
       const availableCommands = Object.keys(commandHandlers);
       let closestCommand = '';
@@ -227,6 +237,8 @@ class MessageController {
     const chat = await message.getChat();
     const phoneNumber = message.author || message.from.split('@')[0];
 
+    console.log(`Processando mensagem: "${message.body}" de ${senderName} (${phoneNumber})`);
+
     messageLog(message, senderName);
 
     if (chat.isGroup) {
@@ -244,13 +256,26 @@ class MessageController {
     }
 
     const lowerCaseBody = message.body.toLowerCase();
+    console.log(`Mensagem em minúsculas: "${lowerCaseBody}"`);
+
     if (lowerCaseBody.includes("coiso")) {
+      console.log("Processando comando 'coiso'");
       await this.handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
     } else if (lowerCaseBody.includes("porrinha")) {
+      console.log("Processando comando 'porrinha'");
       await this.handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
     } else if (message.body.startsWith("!")) {
+      console.log("Processando comando com '!'");
       const [command, ...args] = message.body.toLowerCase().slice(1).split(" ");
-      await MessageController.handleCommand(client, message, command, args);
+      console.log(`Comando detectado: ${command}, Argumentos: ${args.join(', ')}`);
+      try {
+        await MessageController.handleCommand(client, message, command, args);
+      } catch (error) {
+        console.error(`Erro ao processar comando ${command}:`, error);
+        await message.reply("Ocorreu um erro ao processar o comando. Por favor, tente novamente mais tarde.");
+      }
+    } else {
+      console.log("Nenhum comando reconhecido");
     }
   }
 }
