@@ -14,14 +14,14 @@ const apiKey = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-pro",
+  model: "gemini-1.5-flash-002",
   systemInstruction: ``,
 });
 
 const generationConfig = {
   temperature: 0.8,
   topP: 0.95,
-  topK: 64,
+  topK: 40, // Alterado de 64 para 40, que está dentro do intervalo suportado (1 a 40)
   maxOutputTokens: 8192,
   responseMimeType: "text/plain",
 };

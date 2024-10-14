@@ -261,10 +261,10 @@ class MessageController {
 
     if (lowerCaseBody.includes("coiso")) {
       console.log("Processando comando 'coiso'");
-      await this.handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
+      await MessageController.handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
     } else if (lowerCaseBody.includes("porrinha")) {
       console.log("Processando comando 'porrinha'");
-      await this.handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
+      await MessageController.handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
     } else if (message.body.startsWith("!")) {
       console.log("Processando comando com '!'");
       const [command, ...args] = message.body.toLowerCase().slice(1).split(" ");
