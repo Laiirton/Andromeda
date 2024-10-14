@@ -16,6 +16,7 @@ import {
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import { getCapturesRemaining } from "../services/pokemon/captureLimits.js";
 import { fetchPokemonData } from '../services/pokemon/pokemonRarity.js';
+import { listPokemonByRarity, listRarityOptions } from '../services/pokemon/pokemonListCommands.js';
 
 class PokemonController {
   static async handlePokemon(client, message, senderName) {
@@ -423,6 +424,26 @@ class PokemonController {
     } catch (error) {
       console.error("Erro ao buscar estatísticas do Pokémon:", error);
       await message.reply("Ocorreu um erro ao buscar as estatísticas do Pokémon. Verifique se o nome está correto e tente novamente.");
+    }
+  }
+
+  static async handlePokemonRarityList(message, senderName, args) {
+    try {
+      const phoneNumber = message.author || message.from.split('@')[0];
+      const rarity = args.join(' ').trim().toLowerCase();
+
+      if (!rarity) {
+        const rarityOptions = listRarityOptions();
+        await message.reply(rarityOptions);
+      } else if (['legendary', 'mythical', 'normal'].includes(rarity)) {
+        const pokemonList = await listPokemonByRarity(senderName, phoneNumber, rarity);
+        await message.reply(pokemonList);
+      } else {
+        await message.reply('Raridade inválida. Use !pokerarity para ver as opções disponíveis.');
+      }
+    } catch (error) {
+      console.error('Erro ao listar Pokémon por raridade:', error);
+      await message.reply('Ocorreu um erro ao listar seus Pokémon. Tente novamente mais tarde.');
     }
   }
 }

@@ -129,6 +129,7 @@ class MessageController {
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
       stats: () => PokemonController.handlePokemonStats(client, message, senderName, args),
+      pokerarity: (args) => PokemonController.handlePokemonRarityList(message, senderName, args),
     };
 
     const handler = commandHandlers[command];
