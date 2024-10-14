@@ -270,26 +270,33 @@ class PokemonController {
 
   static async handleSacrificePokemon(client, message, senderName, args) {
     try {
-      const phoneNumber = message.author || message.from.split('@')[0];
-      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
-      const pokemonName = args.join(' ').trim();
-      
-      if (!pokemonName) {
-        await message.reply("Por favor, especifique o nome do Pokémon que deseja sacrificar. Exemplo: !sacrificar Pikachu");
+      const phoneNumber = message.author || (message.from ? message.from.split('@')[0] : null);
+      if (!phoneNumber) {
+        console.error('Não foi possível obter o número de telefone do remetente');
+        await client.sendMessage(message.from, 'Ocorreu um erro ao identificar seu número. Por favor, tente novamente.');
         return;
       }
 
-      const result = await sacrificePokemon(senderName, cleanPhoneNumber, pokemonName);
-      let replyMessage = result.message;
+      const pokemonName = args.join(' ').trim();
 
-      if (result.minutesRemaining !== undefined) {
-        replyMessage += `\nVocê poderá capturar novamente em ${result.minutesRemaining} minutos.`;
+      if (!pokemonName) {
+        await client.sendMessage(message.from, 'Por favor, especifique o nome do Pokémon que deseja sacrificar.');
+        return;
       }
 
-      await message.reply(replyMessage);
+      const result = await sacrificePokemon(senderName, phoneNumber, pokemonName);
+
+      if (result.message) {
+        await client.sendMessage(message.from, result.message);
+        if (result.minutesRemaining) {
+          await client.sendMessage(message.from, `Você poderá capturar novamente em ${result.minutesRemaining} minutos.`);
+        }
+      } else {
+        await client.sendMessage(message.from, 'Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.');
+      }
     } catch (error) {
       console.error('Erro ao sacrificar Pokémon:', error);
-      await message.reply('Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.');
+      await client.sendMessage(message.from, 'Ocorreu um erro ao sacrificar o Pokémon. Tente novamente mais tarde.');
     }
   }
 

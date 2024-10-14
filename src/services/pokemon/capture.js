@@ -111,7 +111,8 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
         pokemonStatus: `${pokemonStatus} (${rarityLabel})`,
         remainingCaptures,
         companionEvolution,
-        companionImage
+        companionImage,
+        count: savedPokemon.count // Adicionando a contagem ao retorno
       };
     } catch (error) {
       console.error('Erro ao capturar Pokémon:', error);
@@ -199,11 +200,13 @@ export async function sacrificePokemon(senderName, phoneNumber, pokemonName) {
     const user = await getOrCreateUser(senderName, phoneNumber);
     if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
+    // Verificar se o usuário possui o Pokémon
     const { data: pokemon, error: pokemonError } = await supabase
       .from('pokemon_generated')
       .select('*')
       .eq('user_id', user.id)
       .ilike('pokemon_name', pokemonName)
+      .order('created_at', { ascending: true })
       .limit(1);
 
     if (pokemonError) throw pokemonError;
@@ -211,13 +214,66 @@ export async function sacrificePokemon(senderName, phoneNumber, pokemonName) {
       return { message: `Você não possui o Pokémon ${pokemonName} em sua coleção.` };
     }
 
+    // Verificar limites de sacrifício
+    const { data: userLimit, error: limitError } = await supabase
+      .from('user_capture_limits')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (limitError) throw limitError;
+
+    const today = new Date().toISOString().split('T')[0];
+    if (userLimit.last_sacrifice_date === today && userLimit.sacrifices_today >= 5) {
+      return { message: "Você já atingiu o limite máximo de sacrifícios por dia (5)." };
+    }
+
+    // Verificar se o Pokémon está em uma troca pendente
+    const { data: pendingTrade, error: tradeError } = await supabase
+      .from('pokemon_trades')
+      .select('*')
+      .eq('initiator_pokemon_id', pokemon[0].id)
+      .eq('status', 'pending')
+      .single();
+
+    if (tradeError && tradeError.code !== 'PGRST116') throw tradeError;
+
+    if (pendingTrade) {
+      return { message: `Este Pokémon está em uma troca pendente e não pode ser sacrificado.` };
+    }
+
+    // Realizar o sacrifício
     const result = await sacrificePokemonLimit(user.id, user.username, pokemonName);
 
     if (result.success) {
-      await supabase
+      // Atualizar a contagem do Pokémon em vez de deletá-lo
+      const { error: updateError } = await supabase
         .from('pokemon_generated')
-        .delete()
+        .update({ count: pokemon[0].count - 1 })
         .eq('id', pokemon[0].id);
+
+      if (updateError) throw updateError;
+
+      // Se a contagem chegar a zero, então deletamos o registro
+      if (pokemon[0].count === 1) {
+        const { error: deleteError } = await supabase
+          .from('pokemon_generated')
+          .delete()
+          .eq('id', pokemon[0].id);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Atualizar o contador de sacrifícios
+      const { error: updateLimitError } = await supabase
+        .from('user_capture_limits')
+        .update({ 
+          sacrifices_today: userLimit.sacrifices_today + 1,
+          last_sacrifice_date: today
+        })
+        .eq('user_id', user.id);
+
+      if (updateLimitError) throw updateLimitError;
 
       console.log('Sacrifício realizado:', result);
 

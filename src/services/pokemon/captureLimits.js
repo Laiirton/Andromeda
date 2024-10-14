@@ -218,15 +218,26 @@ export async function sacrificePokemon(userId, username, pokemonName) {
     const currentTime = new Date();
     const lastCaptureTime = new Date(userLimit.last_capture_time);
     const timeDifference = currentTime - lastCaptureTime;
+    const today = currentTime.toISOString().split('T')[0];
 
     if (timeDifference < RESET_TIME) {
+      // Verificar se o usuário já sacrificou o máximo permitido por dia
+      if (userLimit.last_sacrifice_date === today && userLimit.sacrifices_today >= 5) {
+        return {
+          success: false,
+          message: "Você já atingiu o limite máximo de sacrifícios por dia (5)."
+        };
+      }
+
       const newLastCaptureTime = new Date(lastCaptureTime.getTime() - SACRIFICE_TIME_REDUCTION);
       
       const { error: updateError } = await supabase
         .from('user_capture_limits')
         .update({ 
           last_capture_time: newLastCaptureTime.toISOString(),
-          username
+          username,
+          last_sacrifice_date: today,
+          sacrifices_today: userLimit.last_sacrifice_date === today ? userLimit.sacrifices_today + 1 : 1
         })
         .eq('user_id', userId);
 
