@@ -104,7 +104,8 @@ class PokemonController {
     }
 
     try {
-      const result = await chooseCompanion(senderName, companionName);
+      const phoneNumber = message.author || message.from.split('@')[0];
+      const result = await chooseCompanion(senderName, phoneNumber, companionName);
       if (result.error) {
         await message.reply(result.error);
       } else {
