@@ -8,6 +8,7 @@ import r34API from "0000000r34api";
 import HMfull from "hmfull";
 import dotenv from "dotenv";
 import { promisify } from "util";
+import axios from 'axios';
 
 dotenv.config();
 const nsfw = new club();
@@ -116,15 +117,25 @@ export async function sendNSFWImage(client, message, senderName, category) {
   try {
     if (nsfw[category]) {
       console.log(
-        `Sending NSFW image ${category} to ${senderName} in ${new Date().toLocaleString()}`
+        `Enviando imagem NSFW ${category} para ${senderName} em ${new Date().toLocaleString()}`
       );
       const nsfwImage = await nsfw[category]();
-      const media = await MessageMedia.fromUrl(nsfwImage);
-      await client.sendMessage(message.from, media);
+      
+      // Use axios para baixar a imagem
+      const response = await axios.get(nsfwImage, { responseType: 'arraybuffer' });
+      const buffer = Buffer.from(response.data, 'binary');
+      
+      // Crie o MessageMedia diretamente do buffer
+      const media = new MessageMedia('image/jpeg', buffer.toString('base64'));
+      
+      await client.sendMessage(message.from, media, { caption: `Aqui está sua imagem ${category}!` });
+      console.log(`Imagem NSFW ${category} enviada com sucesso para ${senderName}`);
+    } else {
+      throw new Error(`Categoria ${category} não encontrada`);
     }
   } catch (error) {
-    console.error(error);
-    message.reply("Under maintenance.😭");
+    console.error(`Erro ao enviar imagem NSFW (${category}):`, error);
+    message.reply("Desculpe, ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.");
   }
 }
 

@@ -99,14 +99,14 @@ class MessageController {
       fig: () => sendSticker(client, message, senderName),
       img: () => sendImage(client, message),
       delete: () => deleteMessage(message, senderName),
-      pussy: () => this.handleNSFW(client, message, senderName, command),
-      ass: () => this.handleNSFW(client, message, senderName, command),
-      dick: () => this.handleNSFW(client, message, senderName, command),
-      futa: () => this.handleNSFW(client, message, senderName, command),
-      hentai: () => this.handleNSFW(client, message, senderName, command),
-      yaoi: () => this.handleNSFW(client, message, senderName, command),
-      boobs: () => this.handleNSFW(client, message, senderName, command),
-      gay: () => this.handleNSFW(client, message, senderName, command),
+      pussy: () => this.handleNSFW(client, message, senderName, 'pussy'),
+      ass: () => this.handleNSFW(client, message, senderName, 'ass'),
+      dick: () => this.handleNSFW(client, message, senderName, 'dick'),
+      futa: () => this.handleNSFW(client, message, senderName, 'futa'),
+      hentai: () => this.handleNSFW(client, message, senderName, 'hentai'),
+      yaoi: () => this.handleNSFW(client, message, senderName, 'yaoi'),
+      boobs: () => this.handleNSFW(client, message, senderName, 'boobs'),
+      gay: () => this.handleNSFW(client, message, senderName, 'gay'),
       r34: () => this.handleR34(client, message, senderName, message.body.split(' ')[1]),
       r34random: () => this.handleR34Random(client, message, senderName),
       menu: () => message.reply(menu),
@@ -136,11 +136,7 @@ class MessageController {
     if (handler) {
       console.log(`Handler encontrado para o comando: ${command}`);
       try {
-        if (typeof handler === 'function') {
-          await handler(args);
-        } else {
-          await handler();
-        }
+        await handler();
         console.log(`Comando ${command} executado com sucesso`);
       } catch (error) {
         console.error(`Erro ao executar o comando ${command}:`, error);
@@ -180,7 +176,12 @@ class MessageController {
   }
 
   static async handleNSFW(client, message, senderName, category) {
-    await sendNSFWImage(client, message, senderName, category);
+    try {
+      await sendNSFWImage(client, message, senderName, category);
+    } catch (error) {
+      console.error(`Erro ao processar comando NSFW ${category}:`, error);
+      await message.reply("Ocorreu um erro ao processar o comando. Por favor, tente novamente mais tarde.");
+    }
   }
 
   static async handleRule34(client, message, senderName) {
