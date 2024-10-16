@@ -44,39 +44,48 @@ export async function getAllUserPokemon(senderName, phoneNumber, page = 1) {
 
     console.log(`Usuário encontrado/criado: ${user.username} (ID: ${user.id})`);
 
-    const { count, error: countError } = await supabase
+    // Buscar todos os Pokémon do usuário
+    const { data: allPokemon, error: pokemonError, count } = await supabase
       .from('pokemon_generated')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'exact' })
       .eq('user_id', user.id);
-
-    if (countError) throw countError;
-
-    const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
-    page = Math.max(1, Math.min(page, totalPages));
-
-    const { data: pokemonList, error: pokemonError } = await supabase
-      .from('pokemon_generated')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('pokemon_name')
-      .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1);
 
     if (pokemonError) {
       console.error('Erro ao buscar Pokémon do usuário:', pokemonError);
       throw pokemonError;
     }
 
-    console.log(`${pokemonList.length} Pokémon encontrados para ${user.username} (Página ${page}/${totalPages})`);
+    // Agrupar Pokémon por nome e somar contagens
+    const groupedPokemon = allPokemon.reduce((acc, pokemon) => {
+      const key = `${pokemon.pokemon_name}_${pokemon.is_shiny}`;
+      if (!acc[key]) {
+        acc[key] = { ...pokemon, total_count: 0 };
+      }
+      acc[key].total_count += pokemon.count;
+      return acc;
+    }, {});
 
-    if (pokemonList.length === 0) {
+    const uniquePokemon = Object.values(groupedPokemon);
+    uniquePokemon.sort((a, b) => a.pokemon_name.localeCompare(b.pokemon_name));
+
+    const totalPages = Math.ceil(uniquePokemon.length / ITEMS_PER_PAGE);
+    page = Math.max(1, Math.min(page, totalPages));
+
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const pokemonForPage = uniquePokemon.slice(startIndex, endIndex);
+
+    console.log(`${pokemonForPage.length} Pokémon únicos encontrados para ${user.username} (Página ${page}/${totalPages})`);
+
+    if (pokemonForPage.length === 0) {
       return { message: 'Você ainda não capturou nenhum Pokémon.' };
     }
 
-    const pokedexImage = await createPokedexImage(pokemonList, user.username, page, totalPages);
+    const pokedexImage = await createPokedexImage(pokemonForPage, user.username, page, totalPages);
 
     return { 
       pokedexImage,
-      pokemonCount: count,
+      pokemonCount: uniquePokemon.length,
       currentPage: page,
       totalPages: totalPages,
       username: user.username

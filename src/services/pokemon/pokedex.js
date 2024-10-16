@@ -119,7 +119,7 @@ export async function createPokedexImage(pokemonList, username, currentPage, tot
         // Adiciona o nome e a contagem do Pokémon
         const pokemonName = pokemon.pokemon_name.charAt(0).toUpperCase() + pokemon.pokemon_name.slice(1);
         const displayName = pokemon.is_shiny ? `${pokemonName} ✨` : pokemonName;
-        const countText = `x${pokemon.count}`;
+        const countText = `x${pokemon.total_count}`;
         
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 4;
