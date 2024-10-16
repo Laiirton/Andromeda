@@ -2,21 +2,22 @@ import pkg from 'whatsapp-web.js';
 const { MessageMedia } = pkg;
 import {
   getRandomPokemonNameAndImage,
-  getUserPokemon,
   chooseCompanion,
   initiateTrade,
   respondToTrade,
   getPendingTradeForUser,
   getPendingTradesForUser,
-  sacrificePokemon,
+  tradeForCaptures,
   getUserSacrificeStatus,
+  sacrificePokemon,
+  getUserTradeStatus,
   captureAllAvailable,
-  getOrCreateUser
-} from "../services/pokemon/index.js";
+  getOrCreateUser,
+  getCapturesRemaining,
+  getAllUserPokemon,
+  getPokemonByRarity
+} from '../services/pokemon/index.js';
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
-import { getCapturesRemaining } from "../services/pokemon/captureLimits.js";
-import { fetchPokemonData } from '../services/pokemon/pokemonRarity.js';
-import { listPokemonByRarity, listRarityOptions } from '../services/pokemon/pokemonListCommands.js';
 
 class PokemonController {
   static async handlePokemon(client, message, senderName) {
@@ -63,64 +64,30 @@ class PokemonController {
     }
   }
 
-  static async handlePokedex(client, message, senderName, args) {
-    try {
-      const phoneNumber = message.author || message.from.split('@')[0];
-      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
-      const page = args.length > 0 ? parseInt(args[0]) : 1;
-      
-      const result = await getUserPokemon(senderName, cleanPhoneNumber, page);
-      if (result.error) {
-        await message.reply(result.error);
-      } else {
-        const { pokedexImages, pokemonCount, currentPage, totalPages } = result;
-        
-        for (let i = 0; i < pokedexImages.length; i++) {
-          const media = new MessageMedia('image/jpeg', pokedexImages[i].toString('base64'), `pokedex_${i+1}.jpg`);
-          const caption = i === 0 
-            ? `Essa é a sua Pokédex, ${senderName}! Você já capturou ${pokemonCount} Pokémon!\nPágina ${currentPage} de ${totalPages}`
-            : `Pokédex de ${senderName} - Página ${currentPage} de ${totalPages}`;
-          await client.sendMessage(message.from, media, { caption });
-        }
-        
-        if (currentPage < totalPages) {
-          await message.reply(`Para ver a próxima página, use o comando !pokedex ${currentPage + 1}`);
-        }
-        if (currentPage > 1) {
-          await message.reply(`Para ver a página anterior, use o comando !pokedex ${currentPage - 1}`);
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao enviar Pokédex:", error);
-      await message.reply("Desculpe, ocorreu um erro ao buscar sua Pokédex. Tente novamente mais tarde.");
-    }
-  }
-
   static async handleChooseCompanion(client, message, senderName) {
-    const companionName = message.body.split(' ').slice(1).join(' ').trim();
-    if (!companionName) {
-      await message.reply("Por favor, forneça o nome do Pokémon que você deseja como companheiro. Exemplo: !companion Pikachu");
+    const args = message.body.split(' ').slice(1);
+    if (args.length === 0) {
+      await message.reply("Por favor, especifique o nome do Pokémon que deseja escolher como companheiro.");
       return;
     }
 
+    const companionName = args.join(' ');
+    const phoneNumber = message.author || message.from.split('@')[0];
+
     try {
-      const phoneNumber = message.author || message.from.split('@')[0];
       const result = await chooseCompanion(senderName, phoneNumber, companionName);
       if (result.error) {
         await message.reply(result.error);
       } else {
+        await message.reply(result.message);
         if (result.imageUrl) {
           const media = await MessageMedia.fromUrl(result.imageUrl);
-          await client.sendMessage(message.from, media, {
-            caption: result.message
-          });
-        } else {
-          await message.reply(result.message);
+          await client.sendMessage(message.from, media, { caption: `Seu novo companheiro: ${companionName}` });
         }
       }
     } catch (error) {
       console.error("Erro ao escolher companheiro:", error);
-      await message.reply("Desculpe, ocorreu um erro ao escolher seu companheiro. Tente novamente mais tarde.");
+      await message.reply("Ocorreu um erro ao escolher o companheiro. Tente novamente mais tarde.");
     }
   }
 
@@ -130,41 +97,24 @@ class PokemonController {
       return;
     }
 
-    const mentionedUser = await message.getMentions();
-    if (mentionedUser.length === 0) {
-      await message.reply("Por favor, marque o usuário com quem deseja trocar.");
-      return;
-    }
-    const receiverNumber = mentionedUser[0].id.user;
-
-    const chat = await message.getChat();
-    if (!chat.isGroup) {
-      await message.reply("Este comando só pode ser usado em grupos.");
+    const mentionedUsers = await message.getMentions();
+    if (mentionedUsers.length === 0) {
+      await message.reply("Você precisa mencionar um usuário para iniciar uma troca.");
       return;
     }
 
-    const pokemonName = message.body.split('@')[1].split(' ').slice(1).join(' ').trim();
-
-    if (!pokemonName) {
-      await message.reply("Por favor, especifique o nome do Pokémon que deseja trocar.");
-      return;
-    }
+    const receiverUser = mentionedUsers[0];
+    const pokemonName = args.slice(1).join(' ');
+    const initiatorPhoneNumber = message.author || message.from.split('@')[0];
 
     try {
-      const senderNumber = message.author || message.from.split('@')[0];
-      const senderContact = await message.getContact();
-      const senderUsername = senderContact.pushname || senderName;
-      
-      const receiverContact = await client.getContactById(mentionedUser[0].id._serialized);
-      const receiverUsername = receiverContact.pushname || receiverNumber;
-
-      const result = await initiateTrade(senderUsername, senderNumber, receiverUsername, receiverNumber, pokemonName);
+      const result = await initiateTrade(senderName, initiatorPhoneNumber, receiverUser.pushname, receiverUser.id.user, pokemonName);
       if (result.error) {
         await message.reply(result.error);
       } else {
         await message.reply(result.message);
-        await client.sendMessage(mentionedUser[0].id._serialized, 
-          `${senderUsername} quer trocar um ${result.pokemonName} com você. Use !accepttrade [nome do seu Pokémon] para aceitar ou !rejecttrade para recusar.`);
+        await client.sendMessage(receiverUser.id._serialized, 
+          `${senderName} quer trocar um ${result.pokemonName} com você. Use !accepttrade ou !rejecttrade para responder.`);
       }
     } catch (error) {
       console.error("Erro ao iniciar troca:", error);
@@ -212,8 +162,9 @@ class PokemonController {
   }
 
   static async handleRejectTrade(client, message, senderName) {
+    const phoneNumber = message.author || message.from.split('@')[0];
+
     try {
-      const phoneNumber = message.author || message.from.split('@')[0];
       const pendingTrade = await getPendingTradeForUser(senderName, phoneNumber);
       if (!pendingTrade) {
         await message.reply("Você não tem nenhuma proposta de troca pendente.");
@@ -221,7 +172,7 @@ class PokemonController {
       }
 
       if (pendingTrade.isInitiator) {
-        await message.reply("Você não pode rejeitar uma troca que você mesmo iniciou. Use !canceltrade para cancelar a troca.");
+        await message.reply("Você não pode rejeitar uma troca que você mesmo iniciou. Use !canceltrade para cancelar.");
         return;
       }
 
@@ -233,8 +184,7 @@ class PokemonController {
         const chat = await message.getChat();
         const initiator = chat.participants.find(p => p.id.user === result.initiatorUsername || p.id.user === result.initiatorUsername.replace(/[^0-9]/g, ''));
         if (initiator) {
-          await client.sendMessage(initiator.id._serialized, 
-            `${senderName} recusou sua proposta de troca para o Pokémon ${pendingTrade.pokemonOffered}.`);
+          await client.sendMessage(initiator.id._serialized, `${senderName} rejeitou sua proposta de troca.`);
         }
       }
     } catch (error) {
@@ -244,25 +194,30 @@ class PokemonController {
   }
 
   static async handlePendingTrades(client, message, senderName) {
+    const phoneNumber = message.author || message.from.split('@')[0];
+
     try {
-      const phoneNumber = message.author || message.from.split('@')[0];
-      const pendingTrades = await getPendingTradesForUser(senderName, phoneNumber);
+      const user = await getOrCreateUser(senderName, phoneNumber);
+      if (!user) {
+        await message.reply("Não foi possível encontrar seu usuário. Por favor, tente novamente.");
+        return;
+      }
+
+      const pendingTrades = await getPendingTradesForUser(user.id);
       if (pendingTrades.error) {
         await message.reply(pendingTrades.error);
         return;
       }
 
       if (pendingTrades.length === 0) {
-        await message.reply("Você não tem nenhuma troca pendente.");
-        return;
+        await message.reply("Você não tem nenhuma troca pendente no momento.");
+      } else {
+        let replyMessage = "Suas trocas pendentes:\n\n";
+        pendingTrades.forEach((trade, index) => {
+          replyMessage += `${index + 1}. ${trade.isInitiator ? 'Você ofereceu' : trade.initiator + ' ofereceu'} ${trade.pokemonOffered} para ${trade.isInitiator ? trade.receiver : 'você'}\n`;
+        });
+        await message.reply(replyMessage);
       }
-
-      let replyMessage = "Suas trocas pendentes:\n\n";
-      pendingTrades.forEach((trade, index) => {
-        replyMessage += `${index + 1}. ${trade.isInitiator ? 'Você ofereceu' : 'Você recebeu uma oferta de'} ${trade.pokemonOffered} ${trade.isInitiator ? 'para' : 'de'} ${trade.isInitiator ? trade.receiver : trade.initiator}\n`;
-      });
-
-      await message.reply(replyMessage);
     } catch (error) {
       console.error("Erro ao listar trocas pendentes:", error);
       await message.reply("Ocorreu um erro ao listar as trocas pendentes. Tente novamente mais tarde.");
@@ -393,45 +348,42 @@ class PokemonController {
     }
   }
 
-  static async handlePokemonStats(client, message, senderName, args) {
+  static async handlePokedex(client, message, senderName, args) {
     try {
-      let pokemonName;
-
-      if (args.length > 0) {
-        // Se argumentos foram fornecidos, use-os como nome do Pokémon
-        pokemonName = args.join(' ').toLowerCase();
-      } else {
-        // Se não há argumentos, tente obter o nome do Pokémon da mensagem citada
-        const quotedMessage = await message.getQuotedMessage();
-        if (quotedMessage) {
-          const match = quotedMessage.body.match(/Parabéns,.*! Você capturou um (.*?)(✨)?\s/);
-          if (match) {
-            pokemonName = match[1].toLowerCase();
-          }
-        }
+      console.log(`Iniciando handlePokedex para ${senderName}`);
+      const contact = await message.getContact();
+      const phoneNumber = contact.id.user;
+      console.log(`Número de telefone do usuário: ${phoneNumber}`);
+      
+      const page = args[0] ? parseInt(args[0]) : 1;
+      const result = await getAllUserPokemon(senderName, phoneNumber, page);
+      
+      if (result.error) {
+        console.error(`Erro retornado por getAllUserPokemon: ${result.error}`);
+        await message.reply(result.error);
+        return;
       }
-
-      if (!pokemonName) {
-        await message.reply("Por favor, forneça o nome de um Pokémon ou cite uma mensagem de captura.");
+      
+      if (result.message) {
+        console.log(`Mensagem retornada por getAllUserPokemon: ${result.message}`);
+        await message.reply(result.message);
+        return;
+      }
+      
+      if (!result.pokedexImage) {
+        console.error('Imagem da Pokédex não gerada');
+        await message.reply('Desculpe, não foi possível gerar sua Pokédex no momento. Tente novamente mais tarde.');
         return;
       }
 
-      const pokemonData = await fetchPokemonData(pokemonName);
-
-      let statsMessage = `*Estatísticas de ${pokemonData.name.charAt(0).toUpperCase() + pokemonData.name.slice(1)}*\n\n`;
-      statsMessage += `*Tipo(s):* ${pokemonData.types.join(', ')}\n`;
-      statsMessage += `*Habilidades:* ${pokemonData.abilities.join(', ')}\n\n`;
-      statsMessage += "*Estatísticas base:*\n";
-      pokemonData.stats.forEach(stat => {
-        statsMessage += `${stat.name.charAt(0).toUpperCase() + stat.name.slice(1)}: ${stat.base_stat}\n`;
+      const media = new MessageMedia('image/png', result.pokedexImage.toString('base64'));
+      await client.sendMessage(message.from, media, {
+        caption: `Pokédex de ${result.username} - Página ${result.currentPage}/${result.totalPages} - Total de Pokémon: ${result.pokemonCount}`
       });
-      statsMessage += `\n*Raridade:* ${pokemonData.isLegendary ? 'Lendário' : pokemonData.isMythical ? 'Mítico' : 'Normal'}`;
-
-      await client.sendMessage(message.from, statsMessage);
-
+      console.log(`Pokédex enviada com sucesso para ${senderName}`);
     } catch (error) {
-      console.error("Erro ao buscar estatísticas do Pokémon:", error);
-      await message.reply("Ocorreu um erro ao buscar as estatísticas do Pokémon. Verifique se o nome está correto e tente novamente.");
+      console.error('Erro ao obter Pokédex:', error);
+      await message.reply('Ocorreu um erro inesperado ao obter sua Pokédex. Por favor, tente novamente mais tarde.');
     }
   }
 
@@ -441,14 +393,16 @@ class PokemonController {
       const rarity = args.join(' ').trim().toLowerCase();
 
       if (!rarity) {
-        const rarityOptions = listRarityOptions();
-        await message.reply(rarityOptions);
-      } else if (['legendary', 'mythical', 'normal'].includes(rarity)) {
-        const pokemonList = await listPokemonByRarity(senderName, phoneNumber, rarity);
-        await message.reply(pokemonList);
-      } else {
-        await message.reply('Raridade inválida. Use !pokerarity para ver as opções disponíveis.');
+        await message.reply('Por favor, especifique uma raridade: mythical, legendary, shiny, ou normal.');
+        return;
       }
+
+      const result = await getPokemonByRarity(senderName, phoneNumber, rarity);
+      if (result.error) {
+        await message.reply(result.error);
+        return;
+      }
+      await message.reply(result.message);
     } catch (error) {
       console.error('Erro ao listar Pokémon por raridade:', error);
       await message.reply('Ocorreu um erro ao listar seus Pokémon. Tente novamente mais tarde.');

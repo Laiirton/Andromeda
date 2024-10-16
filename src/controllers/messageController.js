@@ -114,7 +114,7 @@ class MessageController {
       nsfw: () => message.reply(menuNSFW),
       groups: () => printGroupList(client),
       pokemon: () => PokemonController.handlePokemon(client, message, senderName),
-      pokedex: () => this.handlePokedex(client, message, senderName, args),
+      pokedex: () => PokemonController.handlePokedex(client, message, senderName, args),
       companion: () => PokemonController.handleChooseCompanion(client, message, senderName),
       trade: () => PokemonController.handleTrade(client, message, senderName, args),
       accepttrade: () => PokemonController.handleAcceptTrade(client, message, senderName, args),
@@ -129,7 +129,7 @@ class MessageController {
       randomchat: () => handleRandomChat(message),
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
-      pokerarity: () => this.handlePokemonRarityList(message, senderName, args),
+      pokerarity: () => PokemonController.handlePokemonRarityList(message, senderName, args),
     };
 
     const handler = commandHandlers[command];
