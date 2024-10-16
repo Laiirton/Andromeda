@@ -26,20 +26,10 @@ import {
 } from '../services/levelsystem/index.js';
 import PokemonController from './pokemonController.js';
 import { getAllUserPokemon, getPokemonByRarity } from '../services/pokemon/index.js';
-import {
-  isAIInterpreterActive,
-  interpretUserIntent,
-  suggestCommand
-} from '../services/aiCommandInterpreter/index.js';
-import { toggleAIInterpreter } from '../services/aiCommandInterpreter/stateManager.js';
-import NodeCache from 'node-cache';
-import { checkRateLimit } from '../services/aiCommandInterpreter/rateLimiter.js';
 
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
 const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
-
-const messageContext = new NodeCache({ stdTTL: 60 }); // Contexto expira após 60 segundos
 
 class MessageController {
   static levenshteinDistance(a, b) {
@@ -137,7 +127,6 @@ class MessageController {
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
       pokerarity: () => PokemonController.handlePokemonRarityList(message, senderName, args),
-      aiinterpreter: () => this.handleAIInterpreterToggle(message),
     };
 
     const handler = commandHandlers[command];
@@ -246,15 +235,14 @@ class MessageController {
     const senderName = contact.pushname;
     const chat = await message.getChat();
     const phoneNumber = message.author || message.from.split('@')[0];
-    const lowerCaseBody = message.body.toLowerCase();
 
     console.log(`Processando mensagem: "${message.body}" de ${senderName} (${phoneNumber})`);
 
     messageLog(message, senderName);
 
     if (chat.isGroup) {
-      const isLevelActive = await isLevelSystemActive(chat.id._serialized);
-      if (isLevelActive) {
+      const isActive = await isLevelSystemActive(chat.id._serialized);
+      if (isActive) {
         console.log(`Processando mensagem para sistema de níveis: ${senderName} (${phoneNumber}) no grupo ${chat.name}`);
         const levelUp = await processLevelMessage(phoneNumber, chat.id._serialized, senderName);
         if (levelUp) {
@@ -262,48 +250,9 @@ class MessageController {
           console.log(`${senderName} subiu para o nível ${levelUp} no grupo ${chat.name}`);
         }
       }
-
-      const isAIActive = await isAIInterpreterActive(chat.id._serialized);
-      if (isAIActive) {
-        const contextKey = `${chat.id._serialized}:${message.author}`;
-        const context = messageContext.get(contextKey);
-
-        if (context && (lowerCaseBody === 'sim' || lowerCaseBody === 's')) {
-          // Executar o comando armazenado no contexto
-          await MessageController.handleCommand(client, message, context.command, context.args);
-          messageContext.del(contextKey);
-          return;
-        }
-
-        if (!message.body.startsWith('!')) {
-          const canMakeRequest = await checkRateLimit();
-          if (canMakeRequest) {
-            try {
-              const interpretation = await interpretUserIntent(message.body);
-              if (interpretation && interpretation.command) {
-                const suggestion = await suggestCommand(interpretation, senderName);
-                await message.reply(suggestion);
-                
-                // Armazenar o contexto
-                messageContext.set(contextKey, {
-                  command: interpretation.command,
-                  args: interpretation.args
-                });
-
-                return;
-              } else {
-                console.log("Interpretação da IA não resultou em um comando válido");
-              }
-            } catch (error) {
-              console.error("Erro ao processar interpretação da IA:", error);
-            }
-          } else {
-            await message.reply("Desculpe, estou recebendo muitas solicitações no momento. Por favor, tente novamente em alguns minutos ou use um comando direto.");
-          }
-        }
-      }
     }
 
+    const lowerCaseBody = message.body.toLowerCase();
     console.log(`Mensagem em minúsculas: "${lowerCaseBody}"`);
 
     if (lowerCaseBody.includes("coiso")) {
@@ -425,32 +374,6 @@ class MessageController {
     } catch (error) {
       console.error('Erro ao obter Pokédex:', error);
       await message.reply('Ocorreu um erro inesperado ao obter sua Pokédex. Por favor, tente novamente mais tarde.');
-    }
-  }
-
-  static async handleAIInterpreterToggle(message) {
-    const chat = await message.getChat();
-    if (!chat.isGroup) {
-      await message.reply("Este comando só pode ser usado em grupos.");
-      return;
-    }
-
-    const participant = await chat.participants.find(p => p.id._serialized === message.author);
-    if (!participant.isAdmin) {
-      await message.reply("Apenas administradores podem ativar ou desativar o interpretador AI.");
-      return;
-    }
-
-    const currentState = await isAIInterpreterActive(chat.id._serialized);
-    const newState = !currentState;
-
-    const result = await toggleAIInterpreter(chat.id._serialized, newState);
-
-    if (result !== null) {
-      await message.reply(`Interpretador AI ${newState ? 'ativado' : 'desativado'} para este grupo.`);
-    } else {
-      await message.reply("Ocorreu um erro ao alternar o status do interpretador AI. Por favor, tente novamente mais tarde.");
-      console.error('Erro ao alternar o estado do interpretador AI para o grupo:', chat.id._serialized);
     }
   }
 }
