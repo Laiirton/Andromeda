@@ -40,6 +40,9 @@ const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
 const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
 
 const messageContext = new NodeCache({ stdTTL: 60 }); // Contexto expira após 60 segundos
+const creatorActivationCache = new NodeCache({ stdTTL: 300 }); // Cache para 5 minutos
+
+const CREATOR_PHONE_NUMBER = '5521965020791@c.us';
 
 class MessageController {
   static levenshteinDistance(a, b) {
@@ -264,7 +267,16 @@ class MessageController {
       }
 
       const isAIActive = await isAIInterpreterActive(chat.id._serialized);
-      if (isAIActive) {
+      const isCreator = message.author === CREATOR_PHONE_NUMBER;
+
+      if (isAIActive || isCreator) {
+        if (!isAIActive && isCreator) {
+          // Ativar temporariamente o interpretador AI para o criador
+          await toggleAIInterpreter(chat.id._serialized, true);
+          console.log("Interpretador AI ativado temporariamente pelo criador do bot");
+          // Não envie mensagem aqui, ela será enviada quando o comando for executado
+        }
+
         const contextKey = `${chat.id._serialized}:${message.author}`;
         const context = messageContext.get(contextKey);
 
@@ -276,7 +288,7 @@ class MessageController {
         }
 
         if (!message.body.startsWith('!')) {
-          const canMakeRequest = await checkRateLimit();
+          const canMakeRequest = isCreator || await checkRateLimit();
           if (canMakeRequest) {
             try {
               const interpretation = await interpretUserIntent(message.body);
@@ -436,8 +448,9 @@ class MessageController {
     }
 
     const participant = await chat.participants.find(p => p.id._serialized === message.author);
-    if (!participant.isAdmin) {
-      await message.reply("Apenas administradores podem ativar ou desativar o interpretador AI.");
+    const isCreator = message.author === CREATOR_PHONE_NUMBER;
+    if (!participant.isAdmin && !isCreator) {
+      await message.reply("Apenas administradores ou o criador do bot podem ativar ou desativar o interpretador AI.");
       return;
     }
 
@@ -447,7 +460,8 @@ class MessageController {
     const result = await toggleAIInterpreter(chat.id._serialized, newState);
 
     if (result !== null) {
-      await message.reply(`Interpretador AI ${newState ? 'ativado' : 'desativado'} para este grupo.`);
+      const activatedBy = isCreator ? "criador do bot" : "administrador";
+      await message.reply(`Interpretador AI ${newState ? 'ativado' : 'desativado'} para este grupo pelo ${activatedBy}.`);
     } else {
       await message.reply("Ocorreu um erro ao alternar o status do interpretador AI. Por favor, tente novamente mais tarde.");
       console.error('Erro ao alternar o estado do interpretador AI para o grupo:', chat.id._serialized);
