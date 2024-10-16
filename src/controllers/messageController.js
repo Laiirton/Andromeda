@@ -27,6 +27,7 @@ import {
 import { handleRandomChat, processRandomChat } from "../services/randomChat/randomChatHandler.js";
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import PokemonController from './pokemonController.js';
+import { getAllUserPokemon, getPokemonByRarity } from '../services/pokemon/index.js';
 
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
@@ -113,7 +114,7 @@ class MessageController {
       nsfw: () => message.reply(menuNSFW),
       groups: () => printGroupList(client),
       pokemon: () => PokemonController.handlePokemon(client, message, senderName),
-      pokedex: (args) => PokemonController.handlePokedex(client, message, senderName, args),
+      pokedex: () => this.handlePokedex(client, message, senderName, args),
       companion: () => PokemonController.handleChooseCompanion(client, message, senderName),
       trade: () => PokemonController.handleTrade(client, message, senderName, args),
       accepttrade: () => PokemonController.handleAcceptTrade(client, message, senderName, args),
@@ -128,8 +129,7 @@ class MessageController {
       randomchat: () => handleRandomChat(message),
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
-      stats: () => PokemonController.handlePokemonStats(client, message, senderName, args),
-      pokerarity: (args) => PokemonController.handlePokemonRarityList(message, senderName, args),
+      pokerarity: () => this.handlePokemonRarityList(message, senderName, args),
     };
 
     const handler = commandHandlers[command];
@@ -278,6 +278,107 @@ class MessageController {
       }
     } else {
       console.log("Nenhum comando reconhecido");
+    }
+  }
+
+  static async handlePokemonStats(client, message, senderName, args) {
+    try {
+      console.log(`Iniciando handlePokemonStats para ${senderName}`);
+      const contact = await message.getContact();
+      const phoneNumber = contact.id.user;
+      console.log(`Número de telefone do usuário: ${phoneNumber}`);
+      
+      const page = args[0] ? parseInt(args[0]) : 1;
+      const result = await getAllUserPokemon(senderName, phoneNumber, page);
+      
+      if (result.error) {
+        console.error(`Erro retornado por getAllUserPokemon: ${result.error}`);
+        await message.reply(result.error);
+        return;
+      }
+      
+      if (result.message) {
+        console.log(`Mensagem retornada por getAllUserPokemon: ${result.message}`);
+        await message.reply(result.message);
+        return;
+      }
+      
+      if (!result.pokedexImage) {
+        console.error('Imagem da Pokédex não gerada');
+        await message.reply('Desculpe, não foi possível gerar sua Pokédex no momento. Tente novamente mais tarde.');
+        return;
+      }
+
+      const media = new MessageMedia('image/png', result.pokedexImage.toString('base64'));
+      await client.sendMessage(message.from, media, {
+        caption: `Pokédex de ${result.username} - Página ${result.currentPage}/${result.totalPages} - Total de Pokémon: ${result.pokemonCount}`
+      });
+      console.log(`Pokédex enviada com sucesso para ${senderName}`);
+    } catch (error) {
+      console.error('Erro ao obter estatísticas de Pokémon:', error);
+      await message.reply('Ocorreu um erro inesperado ao obter as estatísticas de Pokémon. Por favor, tente novamente mais tarde.');
+    }
+  }
+
+  static async handlePokemonRarityList(message, senderName, args) {
+    try {
+      if (!args || args.length === 0) {
+        await message.reply('Por favor, especifique uma raridade: mythical, legendary, shiny, ou normal.');
+        return;
+      }
+
+      const rarity = args[0].toLowerCase();
+      const contact = await message.getContact();
+      const phoneNumber = contact.id.user;
+
+      const result = await getPokemonByRarity(senderName, phoneNumber, rarity);
+      if (result.error) {
+        await message.reply(result.error);
+        return;
+      }
+      await message.reply(result.message);
+    } catch (error) {
+      console.error('Erro ao obter lista de Pokémon por raridade:', error);
+      await message.reply('Ocorreu um erro ao obter a lista de Pokémon por raridade. Por favor, tente novamente mais tarde.');
+    }
+  }
+
+  static async handlePokedex(client, message, senderName, args) {
+    try {
+      console.log(`Iniciando handlePokedex para ${senderName}`);
+      const contact = await message.getContact();
+      const phoneNumber = contact.id.user;
+      console.log(`Número de telefone do usuário: ${phoneNumber}`);
+      
+      const page = args[0] ? parseInt(args[0]) : 1;
+      const result = await getAllUserPokemon(senderName, phoneNumber, page);
+      
+      if (result.error) {
+        console.error(`Erro retornado por getAllUserPokemon: ${result.error}`);
+        await message.reply(result.error);
+        return;
+      }
+      
+      if (result.message) {
+        console.log(`Mensagem retornada por getAllUserPokemon: ${result.message}`);
+        await message.reply(result.message);
+        return;
+      }
+      
+      if (!result.pokedexImage) {
+        console.error('Imagem da Pokédex não gerada');
+        await message.reply('Desculpe, não foi possível gerar sua Pokédex no momento. Tente novamente mais tarde.');
+        return;
+      }
+
+      const media = new MessageMedia('image/png', result.pokedexImage.toString('base64'));
+      await client.sendMessage(message.from, media, {
+        caption: `Pokédex de ${result.username} - Página ${result.currentPage}/${result.totalPages} - Total de Pokémon: ${result.pokemonCount}`
+      });
+      console.log(`Pokédex enviada com sucesso para ${senderName}`);
+    } catch (error) {
+      console.error('Erro ao obter Pokédex:', error);
+      await message.reply('Ocorreu um erro inesperado ao obter sua Pokédex. Por favor, tente novamente mais tarde.');
     }
   }
 }

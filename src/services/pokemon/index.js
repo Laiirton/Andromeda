@@ -18,6 +18,7 @@ import {
   getCapturesRemaining,
   updateCapturesRemaining
 } from './captureLimits.js';
+import { getAllUserPokemon, getPokemonByRarity } from './pokemonStats.js';
 
 export {
   getRandomPokemonNameAndImage,
@@ -38,5 +39,7 @@ export {
   getRemainingCaptures,
   getTradeStatus,
   getCapturesRemaining,
-  updateCapturesRemaining
+  updateCapturesRemaining,
+  getAllUserPokemon,
+  getPokemonByRarity
 };
