@@ -24,8 +24,6 @@ import {
   processMessage as processLevelMessage,
   isLevelSystemActive
 } from '../services/levelsystem/index.js';
-import { handleRandomChat, processRandomChat } from "../services/randomChat/randomChatHandler.js";
-import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import PokemonController from './pokemonController.js';
 import { getAllUserPokemon, getPokemonByRarity } from '../services/pokemon/index.js';
 
@@ -126,7 +124,6 @@ class MessageController {
       levelsystem: () => handleLevelSystemToggle(message, args),
       level: () => handleLevelCommand(message),
       toprank: () => handleTopRankCommand(client, message),
-      randomchat: () => handleRandomChat(message),
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
       pokerarity: () => PokemonController.handlePokemonRarityList(message, senderName, args),
@@ -253,8 +250,6 @@ class MessageController {
           console.log(`${senderName} subiu para o nível ${levelUp} no grupo ${chat.name}`);
         }
       }
-
-      await processRandomChat(client, message, chat);
     }
 
     const lowerCaseBody = message.body.toLowerCase();
