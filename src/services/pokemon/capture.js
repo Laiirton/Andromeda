@@ -23,19 +23,6 @@ const MAX_FETCH_ATTEMPTS = 5;
 const SHINY_CHANCE = 1 / 4096;
 const EVOLUTION_THRESHOLD = 50;
 
-async function fetchPokemonFromPokeAPI(id) {
-  try {
-    const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
-    return {
-      name: response.data.name,
-      image: response.data.sprites.other['official-artwork'].front_default || response.data.sprites.front_default
-    };
-  } catch (error) {
-    console.error(`Erro ao buscar Pokémon da PokeAPI:`, error);
-    return null;
-  }
-}
-
 export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
   return addToQueue(async () => {
     try {
@@ -72,7 +59,7 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
       if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
 
       const rarityLabel = getRarityLabel(pokemon);
-      const pokemonStatus = isShiny ? '✨ (Shiny)' : '';
+      const pokemonStatus = isShiny ? '✨ Shiny' : rarityLabel;
 
       const savedPokemon = await savePokemonToSupabase(
         user.id, 
@@ -108,11 +95,11 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
       return {
         name: pokemon.name,
         imageUrl: pokemon.image,
-        pokemonStatus: `${pokemonStatus} (${rarityLabel})`,
+        pokemonStatus: pokemonStatus,
         remainingCaptures,
         companionEvolution,
         companionImage,
-        count: savedPokemon.count // Adicionando a contagem ao retorno
+        count: savedPokemon.count
       };
     } catch (error) {
       console.error('Erro ao capturar Pokémon:', error);
@@ -441,7 +428,6 @@ export async function captureAllAvailable(client, message, username, phoneNumber
 
       const chat = await message.getChat();
       await chat.sendMessage(captureMessage, { mentions: [await chat.getContact()] });
-
       console.log(`Captura em massa concluída para ${username}. Capturados: ${capturedCount}, Falhas: ${failedMessages}`);
 
       return {
@@ -456,15 +442,4 @@ export async function captureAllAvailable(client, message, username, phoneNumber
       return { error: "Ocorreu um erro ao capturar os Pokémon. Tente novamente mais tarde." };
     }
   });
-}
-
-function formatPhoneNumber(phoneNumber) {
-  // Remover todos os caracteres não numéricos
-  const cleanNumber = phoneNumber.replace(/\D/g, '');
-  
-  // Adicionar o código do país (assumindo que é o Brasil - 55) se não estiver presente
-  const formattedNumber = cleanNumber.startsWith('55') ? cleanNumber : `55${cleanNumber}`;
-  
-  // Adicionar '@c.us' no final para o formato do WhatsApp
-  return `${formattedNumber}@c.us`;
 }

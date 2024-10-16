@@ -42,8 +42,13 @@ class PokemonController {
           const buffer = await fs.readFile(result.imageUrl);
           media = new MessageMedia('image/jpeg', buffer.toString('base64'), `${result.name}.jpg`);
         }
-        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name} ${result.pokemonStatus}!`;
-        caption += `\nVocê tem ${result.remainingCaptures} capturas restantes nesta hora.`;
+        let caption = `Parabéns, ${senderName}! Você capturou um ${result.name}`;
+        if (result.pokemonStatus.includes('Shiny')) {
+          caption += ` ✨ Shiny ✨`;
+        } else {
+          caption += ` (${result.pokemonStatus})`;
+        }
+        caption += `!\nVocê tem ${result.remainingCaptures} capturas restantes nesta hora.`;
         
         await client.sendMessage(message.from, media, { caption });
 
