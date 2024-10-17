@@ -105,55 +105,61 @@ export async function updateUserCaptureInfo(userId, captureCount, lastCaptureTim
   }
 }
 
-export async function savePokemonToSupabase(userId, pokemonName, pokemonImage, isShiny, isLegendary, isMythical) {
+export async function savePokemonToSupabase(userId, pokemonName, imageUrl, isShiny, isLegendary, isMythical) {
   try {
-    // Primeiro, verifique se o Pokémon já existe para este usuário
+    console.log('Tentando salvar Pokémon:', { userId, pokemonName, imageUrl, isShiny, isLegendary, isMythical });
+    
+    // Primeiro, verificamos se o Pokémon já existe para este usuário
     const { data: existingPokemon, error: selectError } = await supabase
       .from('pokemon_generated')
       .select('*')
       .eq('user_id', userId)
       .eq('pokemon_name', pokemonName)
-      .eq('is_shiny', isShiny)
       .single();
 
     if (selectError && selectError.code !== 'PGRST116') throw selectError;
 
     if (existingPokemon) {
-      // Se o Pokémon já existe, atualize a contagem
-      const { data: updatedPokemon, error: updateError } = await supabase
+      // Se o Pokémon já existe, atualizamos o registro
+      const { data, error } = await supabase
         .from('pokemon_generated')
-        .update({ count: existingPokemon.count + 1 })
+        .update({
+          pokemon_image_url: imageUrl,
+          is_shiny: isShiny === true,
+          is_legendary: isLegendary === true,
+          is_mythical: isMythical === true,
+          count: existingPokemon.count + 1
+        })
         .eq('id', existingPokemon.id)
         .select()
         .single();
 
-      if (updateError) throw updateError;
-      
-      console.log('Pokémon atualizado com sucesso:', updatedPokemon);
-      return updatedPokemon;
+      if (error) throw error;
+      console.log('Pokémon atualizado com sucesso:', data);
+      return data;
     } else {
-      // Se o Pokémon não existe, insira um novo registro
-      const { data: newPokemon, error: insertError } = await supabase
+      // Se o Pokémon não existe, inserimos um novo registro
+      const { data, error } = await supabase
         .from('pokemon_generated')
-        .insert([{ 
-          user_id: userId, 
-          pokemon_name: pokemonName, 
-          pokemon_image_url: pokemonImage,
-          is_shiny: isShiny,
-          is_legendary: isLegendary,
-          is_mythical: isMythical,
+        .insert({
+          user_id: userId,
+          pokemon_name: pokemonName,
+          pokemon_image_url: imageUrl,
+          is_shiny: isShiny === true,
+          is_legendary: isLegendary === true,
+          is_mythical: isMythical === true,
           count: 1
-        }])
+        })
         .select()
         .single();
 
-      if (insertError) throw insertError;
-      
-      console.log('Novo Pokémon salvo com sucesso:', newPokemon);
-      return newPokemon;
+      if (error) throw error;
+      console.log('Novo Pokémon salvo com sucesso:', data);
+      return data;
     }
   } catch (error) {
     console.error('Erro ao salvar ou atualizar Pokémon:', error);
+    console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
     return null;
   }
 }

@@ -16,6 +16,7 @@ import { checkAndUpdateCaptureLimit, getRemainingCaptures, getTradeStatus, updat
 import { fetchPokemonData, getRarityLabel } from './pokemonRarity.js';
 import pkg from 'whatsapp-web.js';
 import { addToQueue } from '../../utils/requestQueue.js';
+import { generateShinyPokemon } from './shinyGenerator.js';
 const { MessageMedia } = pkg;
 
 const MAX_POKEMON_ID = 898;
@@ -42,14 +43,20 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
       }
 
       let pokemon = null;
-      let isShiny = false;
       let attempts = 0;
       
       while (!pokemon && attempts < MAX_FETCH_ATTEMPTS) {
         const randomId = Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
         try {
           pokemon = await fetchPokemonData(randomId.toString());
-          isShiny = Math.random() < SHINY_CHANCE;
+          
+          // Gerar shiny
+          const shinyResult = await generateShinyPokemon(pokemon.name);
+          
+          if (shinyResult.isShiny) {
+            pokemon.isShiny = true;
+            pokemon.image = shinyResult.imagePath;
+          }
         } catch (error) {
           console.error(`Tentativa ${attempts + 1} falhou, tentando PokeAPI...`);
         }
@@ -59,15 +66,15 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
       if (!pokemon) throw new Error('Não foi possível obter um Pokémon após várias tentativas');
 
       const rarityLabel = getRarityLabel(pokemon);
-      const pokemonStatus = isShiny ? '✨ Shiny' : rarityLabel;
+      const pokemonStatus = pokemon.isShiny ? '✨ Shiny' : rarityLabel;
 
       const savedPokemon = await savePokemonToSupabase(
         user.id, 
         pokemon.name, 
         pokemon.image, 
-        isShiny, 
-        pokemon.isLegendary, 
-        pokemon.isMythical
+        pokemon.isShiny || false, // Garante que isShiny seja sempre um booleano
+        pokemon.isLegendary || false, // Garante que isLegendary seja sempre um booleano
+        pokemon.isMythical || false // Garante que isMythical seja sempre um booleano
       );
 
       if (!savedPokemon) throw new Error('Falha ao salvar o Pokémon capturado');
@@ -99,7 +106,8 @@ export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
         remainingCaptures,
         companionEvolution,
         companionImage,
-        count: savedPokemon.count
+        count: savedPokemon.count,
+        isShiny: pokemon.isShiny
       };
     } catch (error) {
       console.error('Erro ao capturar Pokémon:', error);

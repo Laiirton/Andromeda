@@ -18,6 +18,7 @@ import {
   getPokemonByRarity
 } from '../services/pokemon/index.js';
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
+import fs from 'fs/promises';
 
 class PokemonController {
   static async handlePokemon(client, message, senderName) {
@@ -35,15 +36,18 @@ class PokemonController {
         }
       } else {
         let media;
-        if (result.imageUrl.startsWith('http')) {
+        if (result.isShiny) {
+          const imageBuffer = await fs.readFile(result.imageUrl);
+          media = new MessageMedia('image/jpeg', imageBuffer.toString('base64'), `${result.name}_shiny.jpg`);
+        } else if (result.imageUrl.startsWith('http')) {
           media = await MessageMedia.fromUrl(result.imageUrl);
         } else {
-          const fs = await import('fs/promises');
           const buffer = await fs.readFile(result.imageUrl);
           media = new MessageMedia('image/jpeg', buffer.toString('base64'), `${result.name}.jpg`);
         }
+
         let caption = `Parabéns, ${senderName}! Você capturou um ${result.name}`;
-        if (result.pokemonStatus.includes('Shiny')) {
+        if (result.isShiny) {
           caption += ` ✨ Shiny ✨`;
         } else {
           caption += ` (${result.pokemonStatus})`;
