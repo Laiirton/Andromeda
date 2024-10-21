@@ -1,7 +1,8 @@
 // Importa módulos necessários
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
-import ffmpeg from "fluent-ffmpeg";
+import { createSticker } from "sticker-maker-wa";
+import ffmpegPath from "ffmpeg-static";
 import fs from "fs";
 import club from "club-atticus";
 import r34API from "0000000r34api";
@@ -57,43 +58,39 @@ async function ensureWebpSize(inputPath, outputPath) {
 export async function sendSticker(client, message, senderName) {
   try {
     const mediaMessage = message.hasQuotedMsg ? await message.getQuotedMessage() : message;
-    if (!mediaMessage.hasMedia) return;
+    if (!mediaMessage.hasMedia) {
+      await message.reply("Por favor, envie uma imagem ou vídeo para criar um sticker.");
+      return;
+    }
 
     const media = await mediaMessage.downloadMedia();
     if (!media) throw new Error("Erro ao baixar a mídia");
 
     const tempPath = `./temp_${Date.now()}`;
-    const outputPath = `${tempPath}.webp`;
-
     await writeFileAsync(tempPath, media.data, "base64");
 
-    if (mediaMessage.type === "image") {
-      await ensureWebpSize(tempPath, outputPath);
-    } else if (mediaMessage.type === "video") {
-      await new Promise((resolve, reject) => {
-        ffmpeg(tempPath)
-          .outputOptions(["-t", `${MAX_VIDEO_DURATION}`, "-vf", "scale=240:-1"])
-          .save(`${tempPath}_reduced.mp4`)
-          .on("end", resolve)
-          .on("error", reject);
-      });
-      await ensureWebpSize(`${tempPath}_reduced.mp4`, outputPath);
-      await unlinkAsync(`${tempPath}_reduced.mp4`);
-    }
+    const buffer = await fs.promises.readFile(tempPath);
 
-    const webpSticker = MessageMedia.fromFilePath(outputPath);
-    await client.sendMessage(message.from, webpSticker, {
-      sendMediaAsSticker: true,
-      stickerAuthor: "Anjinho Bot",
-      stickerName: `Created by ${senderName}`,
+    const sticker = await createSticker(buffer, {
+      ffmpeg: ffmpegPath,
+      metadata: {
+        packname: "Anjinho Bot",
+        author: `Created by ${senderName}`,
+      },
     });
 
+    // Criar um MessageMedia a partir do sticker
+    const stickerMedia = new MessageMedia('image/webp', sticker.toString('base64'));
+
+    // Enviar o sticker
+    await client.sendMessage(message.from, stickerMedia, { sendMediaAsSticker: true });
+
     await unlinkAsync(tempPath);
-    await unlinkAsync(outputPath);
 
     console.log(`Sticker enviado para ${senderName} em ${new Date().toLocaleString()}`);
   } catch (error) {
     console.error("Erro ao processar sticker:", error);
+    await message.reply("Ocorreu um erro ao criar o sticker. Por favor, tente novamente.");
   }
 }
 
