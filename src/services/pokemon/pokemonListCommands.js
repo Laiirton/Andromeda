@@ -1,6 +1,13 @@
 import { supabase } from './database.js';
 import { getOrCreateUser } from './database.js';
 
+/**
+ * Get Pokémon by rarity for a specific user.
+ * @param {number} userId - The ID of the user.
+ * @param {string} rarity - The rarity of the Pokémon.
+ * @returns {Array} - List of Pokémon.
+ * @throws {Error} - If an error occurs while fetching Pokémon.
+ */
 async function getPokemonByRarity(userId, rarity) {
   let query = supabase
     .from('pokemon_generated')
@@ -31,6 +38,13 @@ async function getPokemonByRarity(userId, rarity) {
   return data;
 }
 
+/**
+ * List Pokémon by rarity for a specific user.
+ * @param {string} senderName - The name of the sender.
+ * @param {string} phoneNumber - The phone number of the sender.
+ * @param {string} rarity - The rarity of the Pokémon.
+ * @returns {string} - Message listing the Pokémon.
+ */
 export async function listPokemonByRarity(senderName, phoneNumber, rarity) {
   try {
     const user = await getOrCreateUser(senderName, phoneNumber);
@@ -74,6 +88,10 @@ export async function listPokemonByRarity(senderName, phoneNumber, rarity) {
   }
 }
 
+/**
+ * List available rarity options.
+ * @returns {string} - Message listing the rarity options.
+ */
 export function listRarityOptions() {
   return 'Opções de raridade disponíveis:\n\n' +
          'legendary - para listar Pokémon lendários\n' +

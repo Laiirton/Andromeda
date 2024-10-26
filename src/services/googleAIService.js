@@ -1,4 +1,3 @@
-// Import modules
 import {
   GoogleGenerativeAI,
   HarmCategory,
@@ -9,7 +8,6 @@ import fs from "fs";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Environment variables
 const apiKey = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -21,13 +19,13 @@ const model = genAI.getGenerativeModel({
 const generationConfig = {
   temperature: 0.8,
   topP: 0.95,
-  topK: 40, // Alterado de 64 para 40, que está dentro do intervalo suportado (1 a 40)
+  topK: 40,
   maxOutputTokens: 8192,
   responseMimeType: "text/plain",
 };
 
-const MAX_RETRIES = 3; // número máximo de tentativas
-const RETRY_DELAY = 10000; // atraso em milissegundos entre as tentativas
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 10000;
 
 export async function getGeminiResponse(prompt) {
   let retries = 0;
@@ -61,24 +59,23 @@ export async function getGeminiResponse(prompt) {
 
       result = await chatSession.sendMessage(prompt);
       console.log(`Solicitação bem-sucedida na tentativa #${retries + 1}!`);
-      break; // se a solicitação for bem-sucedida, saia do loop
+      break;
     } catch (error) {
       retries++;
-      console.log(`Erro na tentativa #${retries}: ${error.message}`);
+      console.error(`Erro na tentativa #${retries}: ${error.message}`);
       if (retries === MAX_RETRIES) {
-        throw error; // se atingir o número máximo de tentativas, lance o erro
+        throw new Error("Falha ao obter resposta após várias tentativas.");
       }
       console.error(
-        `Error: ${error.message}, retrying in ${RETRY_DELAY / 1000} seconds...`
+        `Erro: ${error.message}, tentando novamente em ${RETRY_DELAY / 1000} segundos...`
       );
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY)); // aguarde antes de tentar novamente
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
     }
   }
 
   return result.response.text();
 }
 
-// Função para transcrever audios em texto e enviar para o usuário
 export async function getGeminiTranscribe(message) {
   const fileManager = new GoogleAIFileManager(apiKey);
 
@@ -88,33 +85,32 @@ export async function getGeminiTranscribe(message) {
     if (message.hasQuotedMsg) {
       mediaMessage = await message.getQuotedMessage();
     }
-  
+
     mediaMessage = await mediaMessage.downloadMedia();
-  
+
     fs.writeFileSync("./src/media/audio.ogg", mediaMessage.data, {
       encoding: "base64",
     });
     console.log("Arquivo de áudio salvo com sucesso!");
-  
+
     const audioMessage = "./src/media/audio.ogg";
-  
+
     const audioUpload = await fileManager.uploadFile(audioMessage, {
       mimeType: "audio/ogg",
       displayName: "WhatsApp Audio Message",
     });
-  
-    console.log(`Audio uploaded: ${audioUpload.file.uri}`);
 
-    // Verificar se o arquivo está pronto para transcrição
+    console.log(`Áudio enviado: ${audioUpload.file.uri}`);
+
     let file = await fileManager.getFile(audioUpload.file.name);
-    while (file.state === 'PROCESSING'){
-      console.log('Arquivo em processamento...')
-      await new Promise((resolve)=> setTimeout(resolve, 10000));
+    while (file.state === "PROCESSING") {
+      console.log("Arquivo em processamento...");
+      await new Promise((resolve) => setTimeout(resolve, 10000));
       file = await fileManager.getFile(audioUpload.file.name);
     }
 
-    if (file.state === 'FAILED'){
-      throw new Error('Falha ao processar o arquivo de áudio');
+    if (file.state === "FAILED") {
+      throw new Error("Falha ao processar o arquivo de áudio");
     }
 
     const result = await model.generateContent([
@@ -124,17 +120,15 @@ export async function getGeminiTranscribe(message) {
           fileUri: audioUpload.file.uri,
         },
       },
-      { text: 'Transcreva este áudio.' },
+      { text: "Transcreva este áudio." },
     ]);
 
-    console.log('Transcrição:', result.response.text())
+    console.log("Transcrição:", result.response.text());
 
     await fileManager.deleteFile(audioUpload.file.name);
-    console.log('Arquivo de áudio deletado com sucesso!')
-
-    
+    console.log("Arquivo de áudio deletado com sucesso!");
   } catch (error) {
-    console.log(" Error ao transcrever: ", error)
+    console.error("Erro ao transcrever:", error);
+    throw new Error("Falha ao transcrever o áudio. Tente novamente mais tarde.");
   }
-  
 }

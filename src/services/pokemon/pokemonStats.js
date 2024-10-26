@@ -4,6 +4,13 @@ import { getOrCreateUser } from './database.js';
 
 const ITEMS_PER_PAGE = 40;
 
+/**
+ * Get all Pokémon for a user.
+ * @param {string} senderName - The name of the sender.
+ * @param {string} phoneNumber - The phone number of the sender.
+ * @param {number} page - The page number to retrieve.
+ * @returns {object} The result containing Pokémon data or an error message.
+ */
 export async function getAllUserPokemon(senderName, phoneNumber, page = 1) {
   try {
     console.log(`Iniciando getAllUserPokemon para ${senderName} (${phoneNumber})`);
@@ -96,6 +103,13 @@ export async function getAllUserPokemon(senderName, phoneNumber, page = 1) {
   }
 }
 
+/**
+ * Get Pokémon by rarity for a user.
+ * @param {string} senderName - The name of the sender.
+ * @param {string} phoneNumber - The phone number of the sender.
+ * @param {string} rarity - The rarity of the Pokémon.
+ * @returns {object} The result containing Pokémon data or an error message.
+ */
 export async function getPokemonByRarity(senderName, phoneNumber, rarity) {
   try {
     const user = await getOrCreateUser(senderName, phoneNumber);
@@ -143,6 +157,10 @@ export async function getPokemonByRarity(senderName, phoneNumber, rarity) {
   }
 }
 
+/**
+ * Get all Pokémon by rarity.
+ * @returns {object} The result containing Pokémon data or an error message.
+ */
 export async function getAllPokemonByRarity() {
   try {
     const { data: allPokemon, error } = await supabase
@@ -215,6 +233,12 @@ export async function getAllPokemonByRarity() {
   }
 }
 
+/**
+ * Get Pokémon by rarity for a user.
+ * @param {string} senderName - The name of the sender.
+ * @param {string} phoneNumber - The phone number of the sender.
+ * @returns {object} The result containing Pokémon data or an error message.
+ */
 export async function getUserPokemonByRarity(senderName, phoneNumber) {
   try {
     const user = await getOrCreateUser(senderName, phoneNumber);

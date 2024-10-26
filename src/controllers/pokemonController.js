@@ -23,6 +23,12 @@ import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import fs from 'fs/promises';
 
 class PokemonController {
+  /**
+   * Handle the capture of a random Pokémon.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
   static async handlePokemon(client, message, senderName) {
     try {
       const phoneNumber = message.author || message.from.split('@')[0];
@@ -75,6 +81,12 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the selection of a companion Pokémon.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
   static async handleChooseCompanion(client, message, senderName) {
     const args = message.body.split(' ').slice(1);
     if (args.length === 0) {
@@ -102,6 +114,13 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the initiation of a Pokémon trade.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   * @param {Array} args - The command arguments.
+   */
   static async handleTrade(client, message, senderName, args) {
     if (args.length < 2) {
       await message.reply("Uso correto: !trade @usuário [nome do Pokémon]");
@@ -133,6 +152,13 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the acceptance of a Pokémon trade.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   * @param {Array} args - The command arguments.
+   */
   static async handleAcceptTrade(client, message, senderName, args) {
     if (args.length < 1) {
       await message.reply("Uso correto: !accepttrade [nome do Pokémon que você oferece]");
@@ -172,6 +198,12 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the rejection of a Pokémon trade.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
   static async handleRejectTrade(client, message, senderName) {
     const phoneNumber = message.author || message.from.split('@')[0];
 
@@ -204,6 +236,12 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle listing of pending trades for the user.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
   static async handlePendingTrades(client, message, senderName) {
     const phoneNumber = message.author || message.from.split('@')[0];
 
@@ -235,6 +273,13 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the sacrifice of a Pokémon.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   * @param {Array} args - The command arguments.
+   */
   static async handleSacrificePokemon(client, message, senderName, args) {
     try {
       const phoneNumber = message.author || (message.from ? message.from.split('@')[0] : null);
@@ -267,6 +312,12 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the status of Pokémon sacrifices.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
   static async handleSacrificeStatus(client, message, senderName) {
     try {
       const phoneNumber = message.author || message.from.split('@')[0];
@@ -294,6 +345,12 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the capture of all available Pokémon.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
   static async handleCaptureAll(client, message, senderName) {
     try {
       const phoneNumber = message.author || message.from.split('@')[0];
@@ -337,6 +394,12 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the reset of capture time.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
   static async handleResetCaptureTime(client, message, senderName) {
     try {
       const senderNumber = message.author || message.from.split('@')[0];
@@ -359,6 +422,13 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the display of the user's Pokédex.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   * @param {Array} args - The command arguments.
+   */
   static async handlePokedex(client, message, senderName, args) {
     try {
       console.log(`Iniciando handlePokedex para ${senderName}`);
@@ -398,6 +468,12 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the listing of Pokémon by rarity.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   * @param {Array} args - The command arguments.
+   */
   static async handlePokemonRarityList(message, senderName, args) {
     try {
       const phoneNumber = message.author || message.from.split('@')[0];
@@ -420,6 +496,10 @@ class PokemonController {
     }
   }
 
+  /**
+   * Handle the listing of all Pokémon for the user.
+   * @param {object} message - The message object.
+   */
   static async handlePokemonList(message) {
     try {
       const contact = await message.getContact();

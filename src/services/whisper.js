@@ -7,6 +7,12 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const MAX_FILE_SIZE = 24 * 1024 * 1024; // 24MB in bytes
 
+/**
+ * Process a chunk of audio and return its transcription.
+ * @param {Buffer} chunk - The audio chunk to process.
+ * @param {number} index - The index of the chunk.
+ * @returns {Promise<string>} - The transcription of the audio chunk.
+ */
 async function processAudioChunk(chunk, index) {
   const tempFile = path.join(os.tmpdir(), `audio-chunk-${index}-${Date.now()}.mp3`);
   try {
@@ -22,6 +28,9 @@ async function processAudioChunk(chunk, index) {
     });
 
     return transcription.text;
+  } catch (error) {
+    console.error(`Error processing audio chunk ${index}:`, error);
+    throw new Error(`Failed to process audio chunk ${index}`);
   } finally {
     if (fs.existsSync(tempFile)) {
       fs.unlinkSync(tempFile);
@@ -29,6 +38,11 @@ async function processAudioChunk(chunk, index) {
   }
 }
 
+/**
+ * Transcribe an audio buffer using the Whisper model.
+ * @param {Buffer} audioBuffer - The audio buffer to transcribe.
+ * @returns {Promise<string>} - The transcription of the audio buffer.
+ */
 export async function whisperTranscription(audioBuffer) {
   if (!(audioBuffer instanceof Buffer)) {
     throw new Error("audioBuffer must be a Buffer");
@@ -56,6 +70,6 @@ export async function whisperTranscription(audioBuffer) {
     }
   } catch (error) {
     console.error("Error in transcription:", error);
-    throw error;
+    throw new Error("Failed to transcribe audio. Please try again later.");
   }
 }

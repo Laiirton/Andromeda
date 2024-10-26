@@ -4,6 +4,14 @@ const MAX_IMAGE_SIZE = 15 * 1024 * 1024; // 15MB em bytes
 const BACKGROUND_WIDTH = 3000;
 const BACKGROUND_HEIGHT = 2000;
 
+/**
+ * Cria uma imagem da Pokédex com os Pokémon capturados pelo usuário.
+ * @param {Array} pokemonList - Lista de Pokémon capturados.
+ * @param {string} username - Nome do usuário.
+ * @param {number} currentPage - Página atual da Pokédex.
+ * @param {number} totalPages - Total de páginas da Pokédex.
+ * @returns {Buffer} - Buffer da imagem gerada.
+ */
 export async function createPokedexImage(pokemonList, username, currentPage, totalPages) {
   let POKEMON_PER_ROW = 8;
   let POKEMON_SIZE = 200;
