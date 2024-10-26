@@ -394,29 +394,14 @@ export async function getUserTradeStatus(senderName, phoneNumber) {
   }
 }
 
-export async function captureAllAvailable(client, message, username, phoneNumber) {
+export async function captureAllAvailable(client, message, username, phoneNumber, availableCaptures) {
   return addToQueue(async () => {
     try {
-      const cleanPhoneNumber = phoneNumber.split('@')[0];
-      console.log('Tentando obter usuário:', { username, phoneNumber: cleanPhoneNumber });
-
-      const user = await getOrCreateUser(username, cleanPhoneNumber);
-      if (!user) {
-        throw new Error(`Não foi possível criar ou obter o usuário (${username}, ${cleanPhoneNumber})`);
-      }
-
-      // Obter número de capturas disponíveis inicial
-      const { remainingCaptures: initialCaptures } = await getRemainingCaptures(user.id, user.username);
-      if (!initialCaptures || initialCaptures <= 0) {
-        await message.reply("Você não tem capturas disponíveis no momento.");
-        return { message: "Sem capturas disponíveis" };
-      }
-
       let capturedCount = 0;
       let captureResults = [];
       let failedMessages = 0;
 
-      for (let i = 0; i < initialCaptures; i++) {
+      for (let i = 0; i < availableCaptures; i++) {
         const result = await getRandomPokemonNameAndImage(username, phoneNumber);
         if (result.error) {
           console.error('Erro ao capturar Pokémon:', result.error);
@@ -426,8 +411,12 @@ export async function captureAllAvailable(client, message, username, phoneNumber
         captureResults.push(result);
       }
 
-      // Atualizar capturas restantes e obter o novo valor
-      const updatedCaptures = await updateCapturesRemaining(user.id, capturedCount);
+      const user = await getOrCreateUser(username, phoneNumber);
+      if (!user) {
+        throw new Error('Não foi possível criar ou obter o usuário');
+      }
+
+      const remainingCaptures = await updateCapturesRemaining(user.id, capturedCount);
 
       let captureMessage = `@${username} capturou ${capturedCount} Pokémon:\n\n`;
 
@@ -443,7 +432,7 @@ export async function captureAllAvailable(client, message, username, phoneNumber
         }
       }
 
-      captureMessage += `\nVocê tem ${updatedCaptures} capturas restantes.`;
+      captureMessage += `\nVocê tem ${remainingCaptures} capturas restantes.`;
 
       const chat = await message.getChat();
       await chat.sendMessage(captureMessage, { mentions: [await chat.getContact()] });
@@ -452,7 +441,7 @@ export async function captureAllAvailable(client, message, username, phoneNumber
       return {
         message: captureMessage,
         capturedCount,
-        remainingCaptures: updatedCaptures,
+        remainingCaptures,
         failedMessages
       };
     } catch (error) {
