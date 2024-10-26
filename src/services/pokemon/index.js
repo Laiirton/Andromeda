@@ -18,7 +18,12 @@ import {
   getCapturesRemaining,
   updateCapturesRemaining
 } from './captureLimits.js';
-import { getAllUserPokemon, getPokemonByRarity } from './pokemonStats.js';
+import { 
+  getAllUserPokemon, 
+  getPokemonByRarity, 
+  getAllPokemonByRarity,
+  getUserPokemonByRarity // Adicionando a nova função à importação
+} from './pokemonStats.js';
 
 export {
   getRandomPokemonNameAndImage,
@@ -41,5 +46,7 @@ export {
   getCapturesRemaining,
   updateCapturesRemaining,
   getAllUserPokemon,
-  getPokemonByRarity
+  getPokemonByRarity,
+  getAllPokemonByRarity,
+  getUserPokemonByRarity // Adicionando a nova função à exportação
 };

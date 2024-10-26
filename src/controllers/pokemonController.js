@@ -15,7 +15,9 @@ import {
   getOrCreateUser,
   getCapturesRemaining,
   getAllUserPokemon,
-  getPokemonByRarity
+  getPokemonByRarity,
+  getAllPokemonByRarity,
+  getUserPokemonByRarity
 } from '../services/pokemon/index.js';
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import fs from 'fs/promises';
@@ -415,6 +417,32 @@ class PokemonController {
     } catch (error) {
       console.error('Erro ao listar Pokémon por raridade:', error);
       await message.reply('Ocorreu um erro ao listar seus Pokémon. Tente novamente mais tarde.');
+    }
+  }
+
+  static async handlePokemonList(message) {
+    try {
+      const contact = await message.getContact();
+      const senderName = contact.pushname;
+      const phoneNumber = message.author || message.from.split('@')[0];
+
+      const result = await getUserPokemonByRarity(senderName, phoneNumber);
+      
+      if (result.error) {
+        await message.reply(result.error);
+        return;
+      }
+
+      // Envia uma mensagem inicial
+      await message.reply(`*📊 Lista de Pokémon de ${result.username}*`);
+
+      // Envia cada categoria em uma mensagem separada
+      for (const categoryMessage of result.messages) {
+        await message.reply(categoryMessage);
+      }
+    } catch (error) {
+      console.error('Erro ao listar Pokémon:', error);
+      await message.reply('Ocorreu um erro ao listar os Pokémon. Tente novamente mais tarde.');
     }
   }
 }

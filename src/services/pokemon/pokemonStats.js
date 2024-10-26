@@ -142,3 +142,148 @@ export async function getPokemonByRarity(senderName, phoneNumber, rarity) {
     return { error: error.message || 'Erro inesperado ao obter Pokémon por raridade' };
   }
 }
+
+export async function getAllPokemonByRarity() {
+  try {
+    const { data: allPokemon, error } = await supabase
+      .from('pokemon_generated')
+      .select(`
+        pokemon_name,
+        is_shiny,
+        is_legendary,
+        is_mythical,
+        count,
+        users:users!inner(username)
+      `);
+
+    if (error) throw error;
+
+    // Agrupar Pokémon por raridade
+    const pokemonByRarity = {
+      mythical: [],
+      legendary: [],
+      shiny: [],
+      normal: []
+    };
+
+    allPokemon.forEach(pokemon => {
+      // Determinar a categoria do Pokémon
+      let category;
+      if (pokemon.is_mythical) category = 'mythical';
+      else if (pokemon.is_legendary) category = 'legendary';
+      else if (pokemon.is_shiny) category = 'shiny';
+      else category = 'normal';
+
+      // Adicionar o Pokémon à lista da categoria apropriada
+      pokemonByRarity[category].push({
+        name: pokemon.pokemon_name,
+        count: pokemon.count
+      });
+    });
+
+    // Função auxiliar para formatar a lista de Pokémon
+    const formatPokemonList = (pokemons) => {
+      return pokemons.map(p => `${p.name} (x${p.count})`).join(', ');
+    };
+
+    const messages = [];
+
+    // Míticos
+    if (pokemonByRarity.mythical.length > 0) {
+      messages.push(`*🌟 Seus Pokémon Míticos:*\n${formatPokemonList(pokemonByRarity.mythical)}`);
+    }
+
+    // Lendários
+    if (pokemonByRarity.legendary.length > 0) {
+      messages.push(`*⭐ Seus Pokémon Lendários:*\n${formatPokemonList(pokemonByRarity.legendary)}`);
+    }
+
+    // Shiny
+    if (pokemonByRarity.shiny.length > 0) {
+      messages.push(`*✨ Seus Pokémon Shiny:*\n${formatPokemonList(pokemonByRarity.shiny)}`);
+    }
+
+    // Normais
+    if (pokemonByRarity.normal.length > 0) {
+      messages.push(`*🔵 Seus Pokémon Normais:*\n${formatPokemonList(pokemonByRarity.normal)}`);
+    }
+
+    return { messages };
+  } catch (error) {
+    console.error('Erro ao obter lista de Pokémon por raridade:', error);
+    return { error: 'Ocorreu um erro ao obter a lista de Pokémon. Tente novamente mais tarde.' };
+  }
+}
+
+export async function getUserPokemonByRarity(senderName, phoneNumber) {
+  try {
+    const user = await getOrCreateUser(senderName, phoneNumber);
+    if (!user) throw new Error('Não foi possível criar ou obter o usuário');
+
+    const { data: allPokemon, error } = await supabase
+      .from('pokemon_generated')
+      .select('*')
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
+    // Agrupar Pokémon por raridade
+    const pokemonByRarity = {
+      mythical: [],
+      legendary: [],
+      shiny: [],
+      normal: []
+    };
+
+    allPokemon.forEach(pokemon => {
+      // Determinar a categoria do Pokémon
+      let category;
+      if (pokemon.is_mythical) category = 'mythical';
+      else if (pokemon.is_legendary) category = 'legendary';
+      else if (pokemon.is_shiny) category = 'shiny';
+      else category = 'normal';
+
+      // Adicionar o Pokémon à lista da categoria apropriada
+      pokemonByRarity[category].push({
+        name: pokemon.pokemon_name,
+        count: pokemon.count
+      });
+    });
+
+    // Função auxiliar para formatar a lista de Pokémon
+    const formatPokemonList = (pokemons) => {
+      return pokemons.map(p => `${p.name} (x${p.count})`).join(', ');
+    };
+
+    const messages = [];
+
+    // Míticos
+    if (pokemonByRarity.mythical.length > 0) {
+      messages.push(`*🌟 Seus Pokémon Míticos:*\n${formatPokemonList(pokemonByRarity.mythical)}`);
+    }
+
+    // Lendários
+    if (pokemonByRarity.legendary.length > 0) {
+      messages.push(`*⭐ Seus Pokémon Lendários:*\n${formatPokemonList(pokemonByRarity.legendary)}`);
+    }
+
+    // Shiny
+    if (pokemonByRarity.shiny.length > 0) {
+      messages.push(`*✨ Seus Pokémon Shiny:*\n${formatPokemonList(pokemonByRarity.shiny)}`);
+    }
+
+    // Normais
+    if (pokemonByRarity.normal.length > 0) {
+      messages.push(`*🔵 Seus Pokémon Normais:*\n${formatPokemonList(pokemonByRarity.normal)}`);
+    }
+
+    if (messages.length === 0) {
+      return { error: 'Você ainda não capturou nenhum Pokémon.' };
+    }
+
+    return { messages, username: user.username };
+  } catch (error) {
+    console.error('Erro ao obter lista de Pokémon por raridade:', error);
+    return { error: 'Ocorreu um erro ao obter a lista de Pokémon. Tente novamente mais tarde.' };
+  }
+}

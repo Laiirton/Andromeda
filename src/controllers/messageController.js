@@ -127,6 +127,7 @@ class MessageController {
       resetcapturetime: () => PokemonController.handleResetCaptureTime(client, message, senderName),
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
       pokerarity: () => PokemonController.handlePokemonRarityList(message, senderName, args),
+      pokelist: () => PokemonController.handlePokemonList(message),
     };
 
     const handler = commandHandlers[command];
@@ -379,3 +380,4 @@ class MessageController {
 }
 
 export const processMessage = MessageController.processMessage;
+
