@@ -75,6 +75,7 @@ class MessageController {
       await message.reply(response);
     } catch (error) {
       console.error(`[${new Date().toLocaleString()}] Erro ao gerar resposta: ${error.message}`);
+      await message.reply("Ocorreu um erro ao gerar a resposta. Por favor, tente novamente mais tarde.");
     }
   }
 

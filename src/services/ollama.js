@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+
 /**
  * Gera uma resposta usando a API Ollama.
  * @param {string} prompt - O prompt para gerar a resposta.
@@ -32,5 +33,20 @@ export async function ollamaGenerate(prompt, options = {}) {
   } catch (error) {
     console.error('Erro ao fazer a requisição:', error);
     throw error;
+  }
+}
+
+/**
+ * Função para melhorar o tratamento de erros e adicionar documentação.
+ * @param {string} prompt - O prompt para gerar a resposta.
+ * @param {Object} options - Opções adicionais para a geração (opcional).
+ * @returns {Promise<string>} A resposta gerada.
+ */
+export async function generateResponseWithImprovedErrorHandling(prompt, options = {}) {
+  try {
+    return await ollamaGenerate(prompt, options);
+  } catch (error) {
+    console.error('Erro ao gerar resposta:', error);
+    throw new Error('Ocorreu um erro ao gerar a resposta. Por favor, tente novamente mais tarde.');
   }
 }

@@ -4,6 +4,11 @@ import path from 'path';
 const SHINY_CHANCE = 1 / 4096; // Chance original de encontrar um Pokémon shiny
 const SHINY_IMAGES_PATH = path.join(process.cwd(), 'assets', 'shiny_pokemon_images');
 
+/**
+ * Generates a shiny Pokémon with a given name.
+ * @param {string} pokemonName - The name of the Pokémon.
+ * @returns {object} The result containing whether the Pokémon is shiny and the image path.
+ */
 export async function generateShinyPokemon(pokemonName) {
   console.log('Gerando Pokémon shiny para:', pokemonName);
   const isShiny = Math.random() < SHINY_CHANCE;

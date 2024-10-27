@@ -1,3 +1,8 @@
+/**
+ * Deletes a quoted message.
+ * @param {object} message - The message object.
+ * @param {string} senderName - The name of the sender.
+ */
 export async function deleteMessage(message, senderName) {
   try {
     const quotedMessage = await message.getQuotedMessage();
@@ -26,9 +31,15 @@ export async function deleteMessage(message, senderName) {
     console.error(
       `Error deleting message: ${error.message} [${new Date().toLocaleString()}]`
     );
+    throw new Error("Failed to delete the message. Please try again later.");
   }
 }
 
+/**
+ * Logs a received message.
+ * @param {object} message - The message object.
+ * @param {string} senderName - The name of the sender.
+ */
 export async function messageLog(message, senderName) {
   try {
     const chat = await message.getChat(); // Get the chat object
@@ -44,9 +55,15 @@ export async function messageLog(message, senderName) {
     console.error(
       `Erro ao registrar mensagem: ${error.message} [${new Date().toLocaleString()}]`
     );
+    throw new Error("Failed to log the message. Please try again later.");
   }
 }
 
+/**
+ * Retrieves the list of groups.
+ * @param {object} client - The WhatsApp client instance.
+ * @returns {Array} - List of groups.
+ */
 async function getGroupList(client) {
   try {
     // Obtém todos os chats
@@ -64,17 +81,26 @@ async function getGroupList(client) {
     return groupList;
   } catch (error) {
     console.error("Erro ao obter lista de grupos:", error);
-    return [];
+    throw new Error("Failed to retrieve the group list. Please try again later.");
   }
 }
 
+/**
+ * Prints the list of groups.
+ * @param {object} client - The WhatsApp client instance.
+ */
 export async function printGroupList(client) {
-  const groups = await getGroupList(client);
+  try {
+    const groups = await getGroupList(client);
 
-  console.log("Lista de Grupos:");
-  groups.forEach((group) => {
-    console.log(`Nome: ${group.name}`);
-    console.log(`ID: ${group.id}`);
-    console.log("---");
-  });
+    console.log("Lista de Grupos:");
+    groups.forEach((group) => {
+      console.log(`Nome: ${group.name}`);
+      console.log(`ID: ${group.id}`);
+      console.log("---");
+    });
+  } catch (error) {
+    console.error("Erro ao imprimir lista de grupos:", error);
+    throw new Error("Failed to print the group list. Please try again later.");
+  }
 }

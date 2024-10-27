@@ -3,6 +3,11 @@ import { getEvolutionName } from './evolution.js';
 import axios from 'axios';
 import { getOrCreateUser } from './database.js';
 
+/**
+ * Get the progress of the companion Pokémon for a user.
+ * @param {number} userId - The ID of the user.
+ * @returns {object|null} The companion progress data or null if an error occurs.
+ */
 export async function getCompanionProgress(userId) {
   try {
     const { data, error } = await supabase
@@ -20,6 +25,12 @@ export async function getCompanionProgress(userId) {
   }
 }
 
+/**
+ * Select a companion Pokémon for a user.
+ * @param {number} userId - The ID of the user.
+ * @param {string} companionName - The name of the companion Pokémon.
+ * @returns {object} The result of the selection, including any error messages.
+ */
 export async function selectCompanion(userId, companionName) {
   try {
     const { data: userPokemon, error: pokemonError } = await supabase
@@ -88,6 +99,11 @@ export async function selectCompanion(userId, companionName) {
   }
 }
 
+/**
+ * Evolve the companion Pokémon for a user.
+ * @param {number} userId - The ID of the user.
+ * @returns {object} The result of the evolution, including any error messages.
+ */
 export async function evolveCompanion(userId) {
   try {
     const companion = await getCompanionProgress(userId);
@@ -135,6 +151,13 @@ export async function evolveCompanion(userId) {
   }
 }
 
+/**
+ * Choose a companion Pokémon for a user.
+ * @param {string} senderName - The name of the sender.
+ * @param {string} phoneNumber - The phone number of the sender.
+ * @param {string} companionName - The name of the companion Pokémon.
+ * @returns {object} The result of the selection, including any error messages.
+ */
 export async function chooseCompanion(senderName, phoneNumber, companionName) {
   try {
     const user = await getOrCreateUser(senderName, phoneNumber);
