@@ -130,6 +130,7 @@ class MessageController {
       pokerarity: () => PokemonController.handlePokemonRarityList(message, senderName, args),
       pokelist: () => PokemonController.handlePokemonList(message),
       poggerdex: () => PokemonController.handleGenerateWebCode(client, message, senderName),
+      updaterarity: () => PokemonController.handleUpdatePokemonRarities(message, senderName),
     };
 
     const handler = commandHandlers[command];
