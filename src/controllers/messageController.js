@@ -129,6 +129,7 @@ class MessageController {
       captureall: () => PokemonController.handleCaptureAll(client, message, senderName),
       pokerarity: () => PokemonController.handlePokemonRarityList(message, senderName, args),
       pokelist: () => PokemonController.handlePokemonList(message),
+      poggerdex: () => PokemonController.handleGenerateWebCode(client, message, senderName),
     };
 
     const handler = commandHandlers[command];
