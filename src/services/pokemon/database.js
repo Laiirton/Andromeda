@@ -163,3 +163,86 @@ export async function savePokemonToSupabase(userId, pokemonName, imageUrl, isShi
     return null;
   }
 }
+
+export async function generateVerificationCode(userId, phoneNumber) {
+  try {
+    // Gera um código aleatório de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Define o tempo de expiração (24 horas a partir de agora)
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    // Insere o código no banco de dados
+    const { data: verificationCode, error } = await supabase
+      .from('verification_codes')
+      .insert({
+        user_id: userId,
+        phone_number: phoneNumber,
+        code: code,
+        expires_at: expiresAt.toISOString(),
+        used: false
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      code: code,
+      expiresAt: expiresAt
+    };
+  } catch (error) {
+    console.error('Erro ao gerar código de verificação:', error);
+    return {
+      success: false,
+      error: 'Erro ao gerar código de verificação'
+    };
+  }
+}
+
+export async function verifyCode(code, phoneNumber) {
+  try {
+    const now = new Date();
+
+    // Busca o código de verificação
+    const { data: verificationCode, error } = await supabase
+      .from('verification_codes')
+      .select('*')
+      .eq('code', code)
+      .eq('phone_number', phoneNumber)
+      .eq('used', false)
+      .gte('expires_at', now.toISOString())
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return {
+          success: false,
+          error: 'Código inválido, expirado ou já utilizado'
+        };
+      }
+      throw error;
+    }
+
+    // Marca o código como usado
+    const { error: updateError } = await supabase
+      .from('verification_codes')
+      .update({ used: true })
+      .eq('id', verificationCode.id);
+
+    if (updateError) throw updateError;
+
+    return {
+      success: true,
+      userId: verificationCode.user_id
+    };
+  } catch (error) {
+    console.error('Erro ao verificar código:', error);
+    return {
+      success: false,
+      error: 'Erro ao verificar código'
+    };
+  }
+}
