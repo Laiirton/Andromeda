@@ -24,6 +24,7 @@ const menu = `
 • *!captureall*: Captura todos os Pokémon disponíveis de uma vez.
 • *!stats [pokémon]*: Exibe as estatísticas de um Pokémon específico.
 • *!pokerarity [tipo]*: Lista seus Pokémon por raridade (legendary, mythical, normal).
+• *!poggerdex*: Gera um código para acessar sua Pokédex no site.
 
 *ℹ️ Informações:*
 • *!pokesystem*: Exibe informações detalhadas sobre o sistema de Pokémon.
@@ -67,7 +68,7 @@ const pokemonSystemInfo = `
 3. *🐾 Companheiro:*
    • *!companion [nome]* para escolher um companheiro.
    • Evolui a cada 50 capturas.
-   • Evolução adiciona o Pokémon à sua Pokédex.
+   • Evolução adiciona o Pok��mon à sua Pokédex.
 
 4. *🔄 Sistema de Trocas:*
    • *!trade @usuário [pokémon]* para iniciar troca.
@@ -95,6 +96,14 @@ const pokemonSystemInfo = `
 
 9. *🔄 Captura em Massa:*
    • *!captureall* captura todos os Pokémon disponíveis de uma vez.
+
+10. *🌐 PoggerDex Manager:*
+   • *!poggerdex* gera código de acesso ao site.
+   • Código válido por 24 horas.
+   • Acesse: https://poggerdex.vercel.app
+   • Gerencie sua Pokédex online.
+   • Visualize estatísticas detalhadas.
+   • Interface web amigável.
 
 Divirta-se capturando, trocando e evoluindo seus Pokémon! 🎉
 `;
