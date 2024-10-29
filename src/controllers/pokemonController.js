@@ -21,6 +21,7 @@ import {
 } from '../services/pokemon/index.js';
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import fs from 'fs/promises';
+import { generateVerificationCode } from '../services/pokemon/database.js';
 
 class PokemonController {
   /**
@@ -523,6 +524,77 @@ class PokemonController {
     } catch (error) {
       console.error('Erro ao listar Pokémon:', error);
       await message.reply('Ocorreu um erro ao listar os Pokémon. Tente novamente mais tarde.');
+    }
+  }
+
+  /**
+   * Handle the generation of a verification code for the website.
+   * @param {object} client - The WhatsApp client instance.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
+  static async handleGenerateWebCode(client, message, senderName) {
+    try {
+      const phoneNumber = message.author || message.from.split('@')[0];
+      const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+      const chat = await message.getChat();
+
+      // Primeiro, obtém ou cria o usuário
+      const user = await getOrCreateUser(senderName, cleanPhoneNumber);
+      if (!user) {
+        await message.reply('Não foi possível encontrar ou criar seu usuário. Por favor, tente novamente.');
+        return;
+      }
+
+      // Gera o código de verificação
+      const result = await generateVerificationCode(user.id, cleanPhoneNumber);
+      
+      if (!result.success) {
+        await message.reply('Ocorreu um erro ao gerar seu código. Por favor, tente novamente mais tarde.');
+        return;
+      }
+
+      // Formata a data de expiração
+      const expiresAt = new Date(result.expiresAt);
+      const formattedExpiration = expiresAt.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // Envia uma mensagem no chat atual informando que o código foi enviado no privado
+      if (chat.isGroup) {
+        await message.reply('✅ Código de verificação enviado no seu privado!');
+      }
+
+      // Envia o código para o usuário no privado
+      // Usa o ID do chat original para garantir que a mensagem seja enviada corretamente
+      const privateChat = await client.getChatById(message.author || message.from);
+      await privateChat.sendMessage(
+        `🔐 *Código de Verificação - PoggerDex Manager* 🔐\n\n` +
+        `Seu código: *${result.code}*\n` +
+        `Válido até: ${formattedExpiration}\n\n` +
+        `⚠️ Não compartilhe este código com ninguém!\n` +
+        `Use-o para vincular sua conta no site:\n\n` +
+        `https://poggerdex.vercel.app`
+      );
+
+      // Envia uma mensagem adicional de segurança também no privado
+      setTimeout(async () => {
+        await privateChat.sendMessage(
+          '🛡️ *Dicas de Segurança*\n\n' +
+          '1. Nunca compartilhe seu código\n' +
+          '2. Use o código apenas no site oficial\n' +
+          '3. O código expira em 24 horas\n' +
+          '4. Gere um novo código se precisar'
+        );
+      }, 1000);
+
+    } catch (error) {
+      console.error('Erro ao gerar código para o site:', error);
+      await message.reply('Ocorreu um erro ao gerar seu código. Por favor, tente novamente mais tarde.');
     }
   }
 }
