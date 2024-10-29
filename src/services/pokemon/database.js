@@ -246,3 +246,90 @@ export async function verifyCode(code, phoneNumber) {
     };
   }
 }
+
+export async function updatePokemonRarities() {
+  try {
+    // Busca todos os pokémons únicos usando distinct on
+    const { data: uniquePokemons, error: selectError } = await supabase
+      .from('pokemon_generated')
+      .select('pokemon_name')
+      .limit(1000); // Adiciona um limite para segurança
+
+    if (selectError) throw selectError;
+
+    // Filtra para obter nomes únicos
+    const uniquePokemonNames = [...new Set(uniquePokemons.map(p => p.pokemon_name))];
+    console.log(`Encontrados ${uniquePokemonNames.length} Pokémon únicos para atualizar`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const pokemonName of uniquePokemonNames) {
+      try {
+        // Normaliza o nome do Pokémon para a API
+        const normalizedName = pokemonName.toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[^a-z0-9-]/g, '') // Remove caracteres especiais
+          .replace(/--+/g, '-'); // Remove hífens duplicados
+        
+        console.log(`Processando ${pokemonName} (${normalizedName})`);
+        
+        // Busca informações do Pokémon na PokeAPI
+        const response = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${normalizedName}`);
+        
+        if (!response.ok) {
+          console.error(`Erro ao buscar dados para ${pokemonName}: ${response.status}`);
+          errorCount++;
+          continue;
+        }
+
+        const pokemonData = await response.json();
+
+        // Determina se é lendário ou mítico
+        const isLegendary = pokemonData.is_legendary || false;
+        const isMythical = pokemonData.is_mythical || false;
+
+        // Atualiza todos os registros deste Pokémon mantendo o status shiny
+        const { error: updateError } = await supabase
+          .from('pokemon_generated')
+          .update({
+            is_legendary: isLegendary,
+            is_mythical: isMythical
+          })
+          .eq('pokemon_name', pokemonName);
+
+        if (updateError) {
+          console.error(`Erro ao atualizar ${pokemonName}:`, updateError);
+          errorCount++;
+          continue;
+        }
+
+        console.log(`Atualizado ${pokemonName} - Lendário: ${isLegendary}, Mítico: ${isMythical}`);
+        successCount++;
+        
+        // Aguarda um pequeno intervalo para não sobrecarregar a API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+      } catch (error) {
+        console.error(`Erro ao processar ${pokemonName}:`, error);
+        errorCount++;
+        continue;
+      }
+    }
+
+    return {
+      success: true,
+      message: `Atualização concluída!\n` +
+               `✅ Sucesso: ${successCount} Pokémon\n` +
+               `❌ Erros: ${errorCount} Pokémon\n` +
+               `📊 Total processado: ${uniquePokemonNames.length} Pokémon`
+    };
+
+  } catch (error) {
+    console.error('Erro ao atualizar raridades:', error);
+    return {
+      success: false,
+      error: 'Erro ao atualizar raridades dos Pokémon'
+    };
+  }
+}
