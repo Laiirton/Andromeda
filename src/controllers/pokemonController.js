@@ -22,6 +22,7 @@ import {
 import { resetCaptureTime } from '../services/pokemon/adminCommands.js';
 import fs from 'fs/promises';
 import { generateVerificationCode } from '../services/pokemon/database.js';
+import { updatePokemonRarities } from '../services/pokemon/database.js';
 
 class PokemonController {
   /**
@@ -595,6 +596,58 @@ class PokemonController {
     } catch (error) {
       console.error('Erro ao gerar código para o site:', error);
       await message.reply('Ocorreu um erro ao gerar seu código. Por favor, tente novamente mais tarde.');
+    }
+  }
+
+  /**
+   * Handle the update of all Pokémon rarities using PokeAPI.
+   * @param {object} message - The message object.
+   * @param {string} senderName - The name of the sender.
+   */
+  static async handleUpdatePokemonRarities(message, senderName) {
+    try {
+      // Verifica se o usuário é um administrador (você precisa implementar essa lógica)
+      const isAdmin = await this.isUserAdmin(message);
+      if (!isAdmin) {
+        await message.reply('❌ Apenas administradores podem executar este comando.');
+        return;
+      }
+
+      await message.reply('🔄 Iniciando atualização das raridades dos Pokémon...\nEste processo pode demorar alguns minutos.');
+
+      const result = await updatePokemonRarities();
+
+      if (result.success) {
+        await message.reply(`✅ ${result.message}`);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar raridades:', error);
+      await message.reply('❌ Ocorreu um erro ao atualizar as raridades dos Pokémon. Por favor, tente novamente mais tarde.');
+    }
+  }
+
+  /**
+   * Check if user is admin
+   * @param {object} message - The message object
+   * @returns {Promise<boolean>}
+   */
+  static async isUserAdmin(message) {
+    try {
+      const chat = await message.getChat();
+      if (!chat.isGroup) {
+        const contact = await message.getContact();
+        // Lista de números de telefone dos administradores
+        const adminNumbers = ['5511999999999']; // Substitua pelo seu número
+        return adminNumbers.includes(contact.number);
+      }
+      
+      const participant = await chat.participants.find(p => p.id._serialized === message.author);
+      return participant && participant.isAdmin;
+    } catch (error) {
+      console.error('Erro ao verificar admin:', error);
+      return false;
     }
   }
 }
