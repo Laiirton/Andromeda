@@ -576,7 +576,7 @@ class PokemonController {
       // Envia a primeira mensagem com as informações
       await privateChat.sendMessage(
         `🔐 *Código de Verificação - PoggerDex Manager* 🔐\n\n` +
-        `Válido até: ${formattedExpiration}\n\n`
+        `Válido até: ${formattedExpiration}`
       );
 
       // Gera a URL de login com o código
