@@ -575,15 +575,18 @@ class PokemonController {
 
       // Envia a primeira mensagem com as informações
       await privateChat.sendMessage(
-        `🔐 *Código de Verificação - PoggerDex* 🔐\n\n` +
+        `🔐 *Código de Verificação - PoggerDex Manager* 🔐\n\n` +
         `Válido até: ${formattedExpiration}\n\n` +
         `⚠️ Não compartilhe este código com ninguém!\n` +
         `Use-o para vincular sua conta no site:\n\n` +
         `https://poggerdex.vercel.app`
       );
 
-      // Envia o código em uma mensagem separada
-      await privateChat.sendMessage(`Seu código: *${result.code}*`);
+      // Gera a URL de login com o código
+      const loginUrl = `https://poggerdex.vercel.app/?code=${result.code}`;
+
+      // Envia a URL com o código em uma mensagem separada
+      await privateChat.sendMessage(loginUrl);
 
     } catch (error) {
       console.error('Erro ao gerar código para o site:', error);
