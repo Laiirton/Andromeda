@@ -10,6 +10,7 @@ import {
   deleteMessage,
   messageLog,
   printGroupList,
+  handleTagAll, 
 } from "../utils/chatTools.js";
 import { ollamaGenerate } from "../services/ollama.js";
 import { whisperTranscription } from "../services/whisper.js";
@@ -131,6 +132,7 @@ class MessageController {
       pokelist: () => PokemonController.handlePokemonList(message),
       poggerdex: () => PokemonController.handleGenerateWebCode(client, message, senderName),
       updaterarity: () => PokemonController.handleUpdatePokemonRarities(message, senderName),
+      tagall: () => handleTagAll(client, message, senderName),
     };
 
     const handler = commandHandlers[command];

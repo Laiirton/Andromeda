@@ -104,3 +104,42 @@ export async function printGroupList(client) {
     throw new Error("Failed to print the group list. Please try again later.");
   }
 }
+
+/**
+ * Tags all members in a WhatsApp group.
+ * @param {object} client - The WhatsApp client instance.
+ * @param {object} message - The message object.
+ * @param {string} senderName - The name of the sender.
+ */
+export async function handleTagAll(client, message, senderName) {
+  try {
+    // Check if message is from a group
+    const chat = await message.getChat();
+    if (!chat.isGroup) {
+      await message.reply('Este comando só pode ser usado em grupos.');
+      return;
+    }
+
+    // Get all participants in the group
+    const participants = await chat.participants;
+    
+    // Create mention text and mentions array using string format
+    let mentionedJidList = [];
+    let mentionText = 'Atenção niggas 🤭\n';
+    
+    for (let participant of participants) {
+      mentionedJidList.push(participant.id._serialized);
+      mentionText += `@${participant.id.user} `;
+    }
+
+    // Send message with simplified mentions format
+    await client.sendMessage(chat.id._serialized, mentionText, {
+      mentions: mentionedJidList
+    });
+
+  } catch (error) {
+    console.error(`Error tagging all members: ${error.message} [${new Date().toLocaleString()}]`);
+    await message.reply("Falha ao marcar todos os membros. Por favor, tente novamente mais tarde.");
+  }
+}
+
