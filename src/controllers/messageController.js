@@ -28,6 +28,9 @@ import {
 import PokemonController from './pokemonController.js';
 import { getAllUserPokemon, getPokemonByRarity } from '../services/pokemon/index.js';
 
+// Adicionar um Map para armazenar sugestões pendentes
+const pendingSuggestions = new Map();
+const suggestionContexts = new Map();
 
 const EMPTY_PROMPT_ERROR = "O prompt não pode estar vazio.";
 const PROMPT_REPLY = "Oi, você precisa me dizer o que deseja.";
@@ -96,18 +99,18 @@ class MessageController {
     console.log(`Processando comando: ${command} com argumentos: ${args.join(', ')}`);
 
     const commandHandlers = {
-      transcribe: () => this.handleTranscribe(message),
+      transcribe: () => MessageController.handleTranscribe(message),
       fig: () => sendSticker(client, message, senderName),
       img: () => sendImage(client, message),
       delete: () => deleteMessage(message, senderName),
-      pussy: () => this.handleNSFW(client, message, senderName, 'pussy'),
-      ass: () => this.handleNSFW(client, message, senderName, 'ass'),
-      dick: () => this.handleNSFW(client, message, senderName, 'dick'),
-      futa: () => this.handleNSFW(client, message, senderName, 'futa'),
-      hentai: () => this.handleNSFW(client, message, senderName, 'hentai'),
-      yaoi: () => this.handleNSFW(client, message, senderName, 'yaoi'),
-      boobs: () => this.handleNSFW(client, message, senderName, 'boobs'),
-      gay: () => this.handleNSFW(client, message, senderName, 'gay'),
+      pussy: () => MessageController.handleNSFW(client, message, senderName, 'pussy'),
+      ass: () => MessageController.handleNSFW(client, message, senderName, 'ass'),
+      dick: () => MessageController.handleNSFW(client, message, senderName, 'dick'),
+      futa: () => MessageController.handleNSFW(client, message, senderName, 'futa'),
+      hentai: () => MessageController.handleNSFW(client, message, senderName, 'hentai'),
+      yaoi: () => MessageController.handleNSFW(client, message, senderName, 'yaoi'),
+      boobs: () => MessageController.handleNSFW(client, message, senderName, 'boobs'),
+      gay: () => MessageController.handleNSFW(client, message, senderName, 'gay'),
       r34: () => this.handleR34(client, message, senderName, message.body.split(' ')[1]),
       r34random: () => this.handleR34Random(client, message, senderName),
       menu: () => message.reply(menu),
@@ -163,6 +166,11 @@ class MessageController {
       // Sugerir o comando mais próximo se a distância for menor que 3
       if (minDistance < 3) {
         await message.reply(`Comando inválido. Você quis dizer "!${closestCommand}"? Digite !menu para ver todos os comandos disponíveis.`);
+        const context = {
+          command: closestCommand,
+          originalMessage: message,
+        };
+        pendingSuggestions.set(senderName.toLowerCase(), context);
       } else {
         await message.reply("Comando inválido. Digite !menu para ver os comandos disponíveis.");
       }
@@ -260,6 +268,20 @@ class MessageController {
 
     const lowerCaseBody = message.body.toLowerCase();
     console.log(`Mensagem em minúsculas: "${lowerCaseBody}"`);
+
+    // Verificar se é uma resposta a uma sugestão
+    if (pendingSuggestions.has(senderName.toLowerCase())) {
+      const context = pendingSuggestions.get(senderName.toLowerCase());
+      if (message.body.toLowerCase() === 'sim') {
+        console.log(`Usuário ${senderName} confirmou a sugestão para o comando "${context.command}"`);
+        pendingSuggestions.delete(senderName.toLowerCase());
+        // Executar o comando sugerido usando a mensagem original
+        await MessageController.handleCommand(client, context.originalMessage, context.command, []);
+        return;
+      } else {
+        pendingSuggestions.delete(senderName.toLowerCase());
+      }
+    }
 
     if (lowerCaseBody.includes("coiso")) {
       console.log("Processando comando 'coiso'");
