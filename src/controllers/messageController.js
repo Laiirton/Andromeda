@@ -165,7 +165,7 @@ class MessageController {
 
       // Sugerir o comando mais próximo se a distância for menor que 3
       if (minDistance < 3) {
-        await message.reply(`Comando inválido. Você quis dizer "!${closestCommand}"? Digite !menu para ver todos os comandos disponíveis.`);
+        await message.reply(`Comando inválido. Você quis dizer "!${closestCommand}"? Responda com "sim" para confirmar a execução do comando correto.`);
         const context = {
           command: closestCommand,
           originalMessage: message,
