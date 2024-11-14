@@ -10,6 +10,7 @@ import HMfull from "hmfull";
 import dotenv from "dotenv";
 import { promisify } from "util";
 import axios from 'axios';
+import ffmpeg from 'fluent-ffmpeg';  // Add this import if not already present
 
 dotenv.config();
 const nsfw = new club();
@@ -55,7 +56,22 @@ async function ensureWebpSize(inputPath, outputPath) {
   if (quality <= 0) throw new Error("Não foi possível comprimir o arquivo para o tamanho desejado");
 }
 
+// Função auxiliar para limpar arquivos temporários
+async function cleanupFiles(...files) {
+  for (const file of files) {
+    if (file && fs.existsSync(file)) {
+      try {
+        await unlinkAsync(file);
+        console.log(`Arquivo temporário removido: ${file}`);
+      } catch (error) {
+        console.error(`Erro ao remover arquivo temporário ${file}:`, error);
+      }
+    }
+  }
+}
+
 export async function sendSticker(client, message, senderName) {
+  let tempInputPath, tempOutputPath;
   try {
     const mediaMessage = message.hasQuotedMsg ? await message.getQuotedMessage() : message;
     if (!mediaMessage.hasMedia) {
@@ -66,31 +82,75 @@ export async function sendSticker(client, message, senderName) {
     const media = await mediaMessage.downloadMedia();
     if (!media) throw new Error("Erro ao baixar a mídia");
 
-    const tempPath = `./temp_${Date.now()}`;
-    await writeFileAsync(tempPath, media.data, "base64");
+    const isAnimated = media.mimetype === 'image/gif' || media.mimetype.includes('video');
+    tempInputPath = `./temp_input_${Date.now()}${isAnimated ? '.gif' : '.png'}`;
+    tempOutputPath = `./temp_output_${Date.now()}.webp`;
 
-    const buffer = await fs.promises.readFile(tempPath);
+    await writeFileAsync(tempInputPath, media.data, "base64");
 
-    const sticker = await createSticker(buffer, {
-      ffmpeg: ffmpegPath,
-      metadata: {
-        packname: "Anjinho Bot",
-        author: `Created by ${senderName}`,
-      },
+    if (isAnimated) {
+      await new Promise((resolve, reject) => {
+        ffmpeg(tempInputPath)
+          .setStartTime(0)
+          .setDuration(5) // Força duração máxima de 5 segundos
+          .outputOptions([
+            "-vcodec", "libwebp",
+            "-vf", "fps=15,scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
+            "-loop", "0",
+            "-preset", "default",
+            "-an",
+            "-vsync", "0",
+            "-ss", "00:00:00.0",
+            "-t", "00:00:05.0",
+            "-fs", "1M", // Limite de tamanho do arquivo em 1MB
+            "-quality", "60", // Reduzido para melhor compressão
+            "-compression_level", "8", // Aumentado para melhor compressão
+            "-qscale:v", "60",
+            "-pix_fmt", "yuva420p",
+            "-lossless", "0",
+          ])
+          .toFormat("webp")
+          .on('start', () => console.log('Iniciando conversão do sticker animado...'))
+          .on('progress', (progress) => {
+            if (progress && progress.percent) {
+              console.log('Progresso:', progress.percent, '%');
+            }
+          })
+          .on('end', () => {
+            console.log('Conversão concluída com sucesso');
+            resolve();
+          })
+          .on('error', (err) => {
+            console.error('Erro na conversão:', err);
+            reject(err);
+          })
+          .save(tempOutputPath);
+      });
+    } else {
+      const stickerBuffer = await createSticker(tempInputPath, {
+        ffmpeg: ffmpegPath,
+        metadata: {
+          packname: "Anjinho Bot",
+          author: `Created by ${senderName}`,
+        },
+      });
+      await writeFileAsync(tempOutputPath, stickerBuffer);
+    }
+
+    const stickerMedia = MessageMedia.fromFilePath(tempOutputPath);
+    await client.sendMessage(message.from, stickerMedia, { 
+      sendMediaAsSticker: true,
+      stickerAuthor: `Created by ${senderName}`,
+      stickerName: "Anjinho Bot"
     });
 
-    // Criar um MessageMedia a partir do sticker
-    const stickerMedia = new MessageMedia('image/webp', sticker.toString('base64'));
-
-    // Enviar o sticker
-    await client.sendMessage(message.from, stickerMedia, { sendMediaAsSticker: true });
-
-    await unlinkAsync(tempPath);
-
-    console.log(`Sticker enviado para ${senderName} em ${new Date().toLocaleString()}`);
+    console.log(`Sticker ${isAnimated ? 'animado' : 'estático'} enviado para ${senderName}`);
   } catch (error) {
     console.error("Erro ao processar sticker:", error);
     await message.reply("Ocorreu um erro ao criar o sticker. Por favor, tente novamente.");
+  } finally {
+    // Garantir que os arquivos temporários sejam sempre removidos
+    await cleanupFiles(tempInputPath, tempOutputPath);
   }
 }
 
@@ -154,40 +214,109 @@ export async function searchRule34(client, message, senderName, category) {
 
 // Função para obter e enviar um GIF aleatório
 export async function getRandomImage() {
-  const categories = [
-    "pat",
-    "hug",
-    "kiss",
-    "smug",
-    "neko",
-    "waifu",
-    "cuddle",
-    "feed",
-    "foxgirl",
-  ];
+  let gifPath = null;
+  let outputWebpPath = null;
+  try {
+    const categories = [
+      "pat",
+      "hug",
+      "kiss",
+      "smug",
+      "neko",
+      "waifu",
+      "cuddle",
+      "feed",
+      "foxgirl",
+    ];
 
-  while (true) {
-    try {
-      const randomCategory =
-        categories[Math.floor(Math.random() * categories.length)];
+    while (true) {
+      try {
+        const randomCategory =
+          categories[Math.floor(Math.random() * categories.length)];
 
-      // Verifica se a função existe e se retorna um GIF
-      if (
-        typeof HMfull.Nekos.sfw[randomCategory] !== "function" ||
-        !HMfull.Nekos.sfw[randomCategory].isGif
-      ) {
-        console.error(
-          `Função para a categoria ${randomCategory} não encontrada ou não retorna um GIF, tentando novamente...`
-        );
-        continue;
+        // Verifica se a função existe e se retorna um GIF
+        if (
+          typeof HMfull.Nekos.sfw[randomCategory] !== "function" ||
+          !HMfull.Nekos.sfw[randomCategory].isGif
+        ) {
+          console.error(
+            `Função para a categoria ${randomCategory} não encontrada ou não retorna um GIF, tentando novamente...`
+          );
+          continue;
+        }
+
+        let responseApi = await HMfull.Nekos.sfw[randomCategory]();
+        let imageUrl = responseApi.url;
+
+        // Converte o GIF para WebP
+        gifPath = "./src/media/temp-image.gif";
+        outputWebpPath = "./src/media/image-sticker.webp";
+
+        const gifData = await fetch(imageUrl).then((res) => res.arrayBuffer());
+        fs.writeFileSync(gifPath, Buffer.from(gifData));
+
+        await new Promise((resolve, reject) => {
+          ffmpeg(gifPath)
+            .outputOptions([
+              "-vcodec",
+              "libwebp",
+              "-vf",
+              "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
+              "-loop",
+              "0",
+              "-preset",
+              "default",
+              "-an",
+              "-vsync",
+              "0",
+              "-s",
+              "240:240",
+              "-quality",
+              "100",
+              "-lossless",
+              "0",
+              "-compression_level",
+              "6",
+              "-q:v",
+              "50",
+              "-pix_fmt",
+              "yuv420p",
+              "-f",
+              "webp",
+            ])
+            .toFormat("webp")
+            .save(outputWebpPath)
+            .on("end", resolve)
+            .on("error", reject);
+        });
+
+        const result = MessageMedia.fromFilePath(outputWebpPath);
+        return result;
+      } catch (error) {
+        console.error("Erro ao obter GIF, tentando novamente:", error);
       }
+    }
+  } catch (error) {
+    console.error("Erro ao obter GIF:", error);
+    throw error;
+  } finally {
+    await cleanupFiles(gifPath, outputWebpPath);
+  }
+}
 
-      let responseApi = await HMfull.Nekos.sfw[randomCategory]();
-      let imageUrl = responseApi.url;
+export async function getRandomGif() {
+  let gifPath = null;
+  let outputWebpPath = null;
+  try {
+    const gf = new GiphyFetch(process.env.GIPHY_API_KEY);
+    const { data } = await gf.random({ tag: "cat" });
 
-      // Converte o GIF para WebP
-      const gifPath = "./src/media/temp-image.gif";
-      const outputWebpPath = "./src/media/image-sticker.webp";
+    let imageUrl = data.images.original.url;
+
+    // Verifica se a mídia é um GIF e converte para WebP
+    if (imageUrl) {
+      gifPath = "./src/media/temp-image.gif";
+      outputWebpPath = "./src/media/image-sticker.webp";
 
       const gifData = await fetch(imageUrl).then((res) => res.arrayBuffer());
       fs.writeFileSync(gifPath, Buffer.from(gifData));
@@ -227,70 +356,16 @@ export async function getRandomImage() {
           .on("error", reject);
       });
 
-      fs.unlinkSync(gifPath);
-      return MessageMedia.fromFilePath(outputWebpPath);
-    } catch (error) {
-      console.error("Erro ao obter GIF, tentando novamente:", error);
+      const result = MessageMedia.fromFilePath(outputWebpPath);
+      return result;
+    } else {
+      // Se não for um GIF, retorne a URL diretamente
+      return imageUrl;
     }
-  }
-}
-
-export async function getRandomGif() {
-  const gf = new GiphyFetch(process.env.GIPHY_API_KEY);
-  const { data } = await gf.random({ tag: "cat" });
-
-  let imageUrl = data.images.original.url;
-
-  // Verifica se a mídia é um GIF e converte para WebP
-  if (imageUrl) {
-    const gifPath = "./src/media/temp-image.gif";
-    const outputWebpPath = "./src/media/image-sticker.webp";
-
-    const gifData = await fetch(imageUrl).then((res) => res.arrayBuffer());
-    fs.writeFileSync(gifPath, Buffer.from(gifData));
-
-    await new Promise((resolve, reject) => {
-      ffmpeg(gifPath)
-        .outputOptions([
-          "-vcodec",
-          "libwebp",
-          "-vf",
-          "scale=240:240:force_original_aspect_ratio=increase,crop=240:240,setsar=1",
-          "-loop",
-          "0",
-          "-preset",
-          "default",
-          "-an",
-          "-vsync",
-          "0",
-          "-s",
-          "240:240",
-          "-quality",
-          "100",
-          "-lossless",
-          "0",
-          "-compression_level",
-          "6",
-          "-q:v",
-          "50",
-          "-pix_fmt",
-          "yuv420p",
-          "-f",
-          "webp",
-        ])
-        .toFormat("webp")
-        .save(outputWebpPath)
-        .on("end", resolve)
-        .on("error", reject);
-    });
-
-    fs.unlinkSync(gifPath);
-
-    console.log("Url do GIF:", imageUrl);
-
-    return MessageMedia.fromFilePath(outputWebpPath);
-  } else {
-    // Se não for um GIF, retorne a URL diretamente
-    return imageUrl;
+  } catch (error) {
+    console.error("Erro ao processar GIF:", error);
+    throw error;
+  } finally {
+    await cleanupFiles(gifPath, outputWebpPath);
   }
 }
