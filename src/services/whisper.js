@@ -2,40 +2,43 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import Groq from "groq-sdk";
+import ffmpeg from 'fluent-ffmpeg';
+import { promisify } from 'util';
+import { pipeline } from 'stream';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const streamPipeline = promisify(pipeline);
 
 const MAX_FILE_SIZE = 24 * 1024 * 1024; // 24MB in bytes
 
 /**
- * Process a chunk of audio and return its transcription.
- * @param {Buffer} chunk - The audio chunk to process.
- * @param {number} index - The index of the chunk.
- * @returns {Promise<string>} - The transcription of the audio chunk.
+ * Convert audio buffer to MP3 format
+ * @param {Buffer} audioBuffer - The audio buffer to convert
+ * @param {string} tempPath - Temporary file path
+ * @returns {Promise<string>} - Path to the converted MP3 file
  */
-async function processAudioChunk(chunk, index) {
-  const tempFile = path.join(os.tmpdir(), `audio-chunk-${index}-${Date.now()}.mp3`);
-  try {
-    fs.writeFileSync(tempFile, chunk);
-    console.log(`Processing chunk ${index}, size: ${chunk.length} bytes`);
-
-    const transcription = await groq.audio.transcriptions.create({
-      file: fs.createReadStream(tempFile),
-      model: "whisper-large-v3",
-      prompt: "", 
-      response_format: "json", 
-      temperature: 0,
-    });
-
-    return transcription.text;
-  } catch (error) {
-    console.error(`Error processing audio chunk ${index}:`, error);
-    throw new Error(`Failed to process audio chunk ${index}`);
-  } finally {
-    if (fs.existsSync(tempFile)) {
-      fs.unlinkSync(tempFile);
-    }
-  }
+async function convertToMp3(audioBuffer, tempPath) {
+  const inputPath = `${tempPath}-input`;
+  const outputPath = `${tempPath}-output.mp3`;
+  
+  fs.writeFileSync(inputPath, audioBuffer);
+  
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .toFormat('mp3')
+      .audioChannels(1) // Convert to mono
+      .audioFrequency(16000) // Set sample rate to 16kHz
+      .audioBitrate('64k') // Lower bitrate for smaller file size
+      .on('error', (error) => {
+        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+        reject(error);
+      })
+      .on('end', () => {
+        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+        resolve(outputPath);
+      })
+      .save(outputPath);
+  });
 }
 
 /**
@@ -49,27 +52,30 @@ export async function whisperTranscription(audioBuffer) {
   }
 
   console.log(`Transcription Process Initialized`);
+  const tempBase = path.join(os.tmpdir(), `audio-${Date.now()}`);
+  let mp3Path = null;
 
   try {
-    if (audioBuffer.length <= MAX_FILE_SIZE) {
-      // Process as a single chunk if file size is within limit
-      return await processAudioChunk(audioBuffer, 0);
-    } else {
-      // Split the file into chunks and process each
-      const chunks = [];
-      for (let i = 0; i < audioBuffer.length; i += MAX_FILE_SIZE) {
-        chunks.push(audioBuffer.slice(i, i + MAX_FILE_SIZE));
-      }
+    // Convert entire audio to optimized MP3
+    mp3Path = await convertToMp3(audioBuffer, tempBase);
+    console.log(`Audio converted successfully, proceeding with transcription`);
 
-      const results = await Promise.all(chunks.map((chunk, index) => 
-        processAudioChunk(chunk, index)
-      ));
+    const transcription = await groq.audio.transcriptions.create({
+      file: fs.createReadStream(mp3Path),
+      model: "whisper-large-v3",
+      prompt: "", 
+      response_format: "json", 
+      temperature: 0,
+    });
 
-      // Combine results from all chunks
-      return results.join(' ');
-    }
+    return transcription.text;
   } catch (error) {
     console.error("Error in transcription:", error);
     throw new Error("Failed to transcribe audio. Please try again later.");
+  } finally {
+    // Clean up temporary files
+    if (mp3Path && fs.existsSync(mp3Path)) {
+      fs.unlinkSync(mp3Path);
+    }
   }
 }
