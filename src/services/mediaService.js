@@ -88,26 +88,29 @@ export async function sendSticker(client, message, senderName) {
 
     await writeFileAsync(tempInputPath, media.data, "base64");
 
+    // Configurações comuns do FFmpeg
+    const commonOptions = [
+      "-vcodec", "libwebp",
+      "-preset", "default",
+      "-compression_level", "6",
+      "-quality", "80",
+      "-pix_fmt", "yuva420p",
+      "-f", "webp",
+      "-vsync", "0"
+    ];
+
     if (isAnimated) {
+      // Configurações específicas para mídia animada
       await new Promise((resolve, reject) => {
         ffmpeg(tempInputPath)
           .setStartTime(0)
-          .setDuration(5) // Força duração máxima de 5 segundos
+          .setDuration(MAX_VIDEO_DURATION)
           .outputOptions([
-            "-vcodec", "libwebp",
+            ...commonOptions,
             "-vf", "fps=15,scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
             "-loop", "0",
-            "-preset", "default",
             "-an",
-            "-vsync", "0",
-            "-ss", "00:00:00.0",
-            "-t", "00:00:05.0",
-            "-fs", "1M", // Limite de tamanho do arquivo em 1MB
-            "-quality", "60", // Reduzido para melhor compressão
-            "-compression_level", "8", // Aumentado para melhor compressão
-            "-qscale:v", "60",
-            "-pix_fmt", "yuva420p",
-            "-lossless", "0",
+            "-fs", "999K"
           ])
           .toFormat("webp")
           .on('start', () => console.log('Iniciando conversão do sticker animado...'))
@@ -116,25 +119,26 @@ export async function sendSticker(client, message, senderName) {
               console.log('Progresso:', progress.percent, '%');
             }
           })
-          .on('end', () => {
-            console.log('Conversão concluída com sucesso');
-            resolve();
-          })
-          .on('error', (err) => {
-            console.error('Erro na conversão:', err);
-            reject(err);
-          })
+          .on('end', resolve)
+          .on('error', reject)
           .save(tempOutputPath);
       });
     } else {
-      const stickerBuffer = await createSticker(tempInputPath, {
-        ffmpeg: ffmpegPath,
-        metadata: {
-          packname: "Anjinho Bot",
-          author: `Created by ${senderName}`,
-        },
+      // Configurações específicas para imagem estática
+      await new Promise((resolve, reject) => {
+        ffmpeg(tempInputPath)
+          .outputOptions([
+            ...commonOptions,
+            "-vf", "scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
+            "-frames:v", "1",
+            "-fs", "999K"
+          ])
+          .toFormat("webp")
+          .on('start', () => console.log('Iniciando conversão do sticker estático...'))
+          .on('end', resolve)
+          .on('error', reject)
+          .save(tempOutputPath);
       });
-      await writeFileAsync(tempOutputPath, stickerBuffer);
     }
 
     const stickerMedia = MessageMedia.fromFilePath(tempOutputPath);
@@ -149,7 +153,6 @@ export async function sendSticker(client, message, senderName) {
     console.error("Erro ao processar sticker:", error);
     await message.reply("Ocorreu um erro ao criar o sticker. Por favor, tente novamente.");
   } finally {
-    // Garantir que os arquivos temporários sejam sempre removidos
     await cleanupFiles(tempInputPath, tempOutputPath);
   }
 }
