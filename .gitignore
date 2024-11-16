@@ -133,3 +133,4 @@ dist
 /.wwebjs_auth
 /.wwebjs_cache
 /src/media
+.aider*
