@@ -192,10 +192,15 @@ export async function getUserCaptureStatus(senderName, phoneNumber) {
 
 export async function sacrificePokemon(senderName, phoneNumber, pokemonName) {
   try {
+    console.log('Iniciando sacrificePokemon service');
+    console.log('Parâmetros:', { senderName, phoneNumber, pokemonName });
+    
     const user = await getOrCreateUser(senderName, phoneNumber);
     if (!user) throw new Error('Não foi possível criar ou obter o usuário');
 
-    // Verificar se o usuário possui o Pokémon
+    console.log('Usuário encontrado:', user);
+
+    // Verificar se o usuário possui o Pokémon (case insensitive)
     const { data: pokemon, error: pokemonError } = await supabase
       .from('pokemon_generated')
       .select('*')
@@ -203,6 +208,8 @@ export async function sacrificePokemon(senderName, phoneNumber, pokemonName) {
       .ilike('pokemon_name', pokemonName)
       .order('created_at', { ascending: true })
       .limit(1);
+
+    console.log('Resultado da busca do pokemon:', { pokemon, pokemonError });
 
     if (pokemonError) throw pokemonError;
     if (!pokemon || pokemon.length === 0) {
