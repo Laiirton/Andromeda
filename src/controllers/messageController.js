@@ -123,7 +123,7 @@ class MessageController {
       accepttrade: () => PokemonController.handleAcceptTrade(client, message, senderName, args),
       rejecttrade: () => PokemonController.handleRejectTrade(client, message, senderName),
       pendingtrades: () => PokemonController.handlePendingTrades(client, message, senderName),
-      sacrificar: (args) => PokemonController.handleSacrificePokemon(client, message, senderName, args),
+      sacrificar: () => PokemonController.handleSacrificePokemon(client, message, senderName, args),
       sacrificiostatus: () => PokemonController.handleSacrificeStatus(client, message, senderName),
       pokesystem: () => message.reply(pokemonSystemInfo),
       levelsystem: () => handleLevelSystemToggle(message, args),
@@ -293,6 +293,7 @@ class MessageController {
       console.log("Processando comando com '!'");
       const [command, ...args] = message.body.toLowerCase().slice(1).split(" ");
       console.log(`Comando detectado: ${command}, Argumentos: ${args.join(', ')}`);
+      console.log('Argumentos completos:', args); // Novo log
       try {
         await MessageController.handleCommand(client, message, command, args);
       } catch (error) {
@@ -407,4 +408,3 @@ class MessageController {
 }
 
 export const processMessage = MessageController.processMessage;
-
