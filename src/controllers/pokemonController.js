@@ -284,6 +284,9 @@ class PokemonController {
    */
   static async handleSacrificePokemon(client, message, senderName, args) {
     try {
+      console.log('Iniciando handleSacrificePokemon');
+      console.log('Argumentos recebidos:', args);
+      
       const phoneNumber = message.author || (message.from ? message.from.split('@')[0] : null);
       if (!phoneNumber) {
         console.error('Não foi possível obter o número de telefone do remetente');
@@ -291,7 +294,8 @@ class PokemonController {
         return;
       }
 
-      const pokemonName = args.join(' ').trim();
+      const pokemonName = Array.isArray(args) ? args.join(' ').trim() : (args || '').toString().trim();
+      console.log('Pokemon name após processamento:', pokemonName);
 
       if (!pokemonName) {
         await client.sendMessage(message.from, 'Por favor, especifique o nome do Pokémon que deseja sacrificar.');
