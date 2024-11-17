@@ -1,5 +1,4 @@
 import { supabase } from './database.js';
-import { createPokedexImage } from './pokedex.js';
 import { getOrCreateUser } from './database.js';
 
 const ITEMS_PER_PAGE = 40;
