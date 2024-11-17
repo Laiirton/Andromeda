@@ -1,17 +1,10 @@
-import { getPokemon } from "pkmonjs";
-import axios from 'axios';
-import fs from 'fs';
-import { createCanvas, loadImage } from 'canvas';
-import { getRarityChance } from './utils.js';
+
 import { 
-  getOrCreateUser, 
-  getUserCaptureInfo, 
-  updateUserCaptureInfo, 
+  getOrCreateUser,
   savePokemonToSupabase,
   supabase
 } from './database.js';
 import { getCompanionProgress, evolveCompanion } from './companion.js';
-import { createPokedexImage } from './pokedex.js';
 import { checkAndUpdateCaptureLimit, getRemainingCaptures, getTradeStatus, updateCapturesRemaining, sacrificePokemon as sacrificePokemonLimit } from './captureLimits.js';
 import { fetchPokemonData, getRarityLabel } from './pokemonRarity.js';
 import pkg from 'whatsapp-web.js';
@@ -21,7 +14,6 @@ const { MessageMedia } = pkg;
 
 const MAX_POKEMON_ID = 898;
 const MAX_FETCH_ATTEMPTS = 5;
-const SHINY_CHANCE = 1 / 4096;
 const EVOLUTION_THRESHOLD = 50;
 
 export async function getRandomPokemonNameAndImage(senderName, phoneNumber) {
