@@ -12,12 +12,12 @@ const apiKey = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash-002",
+  model: "gemini-exp-1114",
   systemInstruction: ``,
 });
 
 const generationConfig = {
-  temperature: 0.8,
+  temperature: 0.7,
   topP: 0.95,
   topK: 40,
   maxOutputTokens: 8192,
