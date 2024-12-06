@@ -13,7 +13,7 @@ const menu = `
 
 *🐾 Sistema Pokémon:*
 • *!pokemon*: Captura um Pokémon aleatório.
-• *!pokedex [página]*: Exibe sua Pokédex (use números para navegar entre páginas).
+• *!poggerdex*: Para ver todos os seus Pokémon capturados pelo site.
 • *!companion [nome]*: Escolhe um Pokémon como seu companheiro.
 • *!trade @usuário [pokémon]*: Inicia uma troca de Pokémon.
 • *!accepttrade [pokémon]*: Aceita uma proposta de troca.
@@ -24,7 +24,7 @@ const menu = `
 • *!captureall*: Captura todos os Pokémon disponíveis de uma vez.
 • *!stats [pokémon]*: Exibe as estatísticas de um Pokémon específico.
 • *!pokerarity [tipo]*: Lista seus Pokémon por raridade (legendary, mythical, normal).
-• *!poggerdex*: Gera um código para acessar sua Pokédex no site.
+
 
 *ℹ️ Informações:*
 • *!pokesystem*: Exibe informações detalhadas sobre o sistema de Pokémon.
