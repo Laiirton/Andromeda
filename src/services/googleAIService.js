@@ -3,8 +3,7 @@ import {
   HarmCategory,
   HarmBlockThreshold,
 } from "@google/generative-ai";
-import { GoogleAIFileManager } from "@google/generative-ai/files";
-import fs from "fs";
+import { saveMessage, getRecentHistory } from '../database/chatHistory.js';
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -12,14 +11,13 @@ const apiKey = process.env.GOOGLE_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
 const model = genAI.getGenerativeModel({
-  model: "gemini-exp-1114",
-  systemInstruction: ``,
+  model: "gemini-exp-1121",
 });
 
 const generationConfig = {
-  temperature: 0.7,
+  temperature: 1,
   topP: 0.95,
-  topK: 40,
+  topK: 64,
   maxOutputTokens: 8192,
   responseMimeType: "text/plain",
 };
@@ -27,37 +25,52 @@ const generationConfig = {
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 10000;
 
-export async function getGeminiResponse(prompt) {
+function formatHistoryMessage(role, content) {
+  return {
+    role: role,
+    parts: [{ text: content + '\n' }]
+  };
+}
+
+export async function getGeminiResponse(prompt, userPhone) {
   let retries = 0;
   let result;
 
   while (retries < MAX_RETRIES) {
     try {
       console.log(`Tentativa #${retries + 1} para o prompt: ${prompt}`);
+      
+      // Recupera o histórico recente do usuário
+      const recentHistory = await getRecentHistory(userPhone);
+      let formattedHistory = recentHistory.reverse().map(msg => 
+        formatHistoryMessage(
+          msg.role === 'assistant' ? 'model' : 'user',
+          msg.content
+        )
+      );
+
+      // Garante que a primeira mensagem seja sempre do usuário
+      if (formattedHistory.length > 0 && formattedHistory[0].role === 'model') {
+        formattedHistory = formattedHistory.slice(1);
+      }
+
       const chatSession = model.startChat({
         generationConfig,
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-        ],
-        history: [],
+        history: formattedHistory,
       });
 
-      result = await chatSession.sendMessage(prompt);
+      // Salva a mensagem do usuário no histórico
+      await saveMessage(userPhone, 'user', prompt);
+
+      // Envia a mensagem com quebra de linha no final
+      result = await chatSession.sendMessage([
+        { text: prompt + '\n' }
+      ]);
+      const responseText = result.response.text();
+      
+      // Salva a resposta da IA no histórico
+      await saveMessage(userPhone, 'assistant', responseText);
+      
       console.log(`Solicitação bem-sucedida na tentativa #${retries + 1}!`);
       break;
     } catch (error) {
