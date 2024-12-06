@@ -72,8 +72,9 @@ class MessageController {
         throw new Error(EMPTY_PROMPT_ERROR);
       }
 
+      const userPhone = message.author || message.from.split('@')[0];
       console.log(`[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`);
-      const response = await generateResponse(prompt);
+      const response = await generateResponse(prompt, userPhone);
 
       console.log(`[${new Date().toLocaleString()}] Usuário ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`);
       await message.reply(response);
