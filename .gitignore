@@ -134,3 +134,4 @@ dist
 /.wwebjs_cache
 /src/media
 .aider*
+chat_history.db
