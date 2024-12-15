@@ -136,3 +136,4 @@ dist
 .aider*
 chat_history.db
 chat_history.db
+./chat_history.db
