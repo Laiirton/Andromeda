@@ -7,7 +7,7 @@ let db;
 async function initializeDatabase() {
   if (!db) {
     db = await open({
-      filename: path.join(process.cwd(), 'chat_history.db'),
+      filename: path.join(process.cwd(), './storage/chat_history.db'),
       driver: sqlite3.Database
     });
 
