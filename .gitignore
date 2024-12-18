@@ -138,3 +138,5 @@ chat_history.db
 chat_history.db
 ./chat_history.db
 *.db
+
+./storage
