@@ -12,7 +12,7 @@ import {
   printGroupList,
   handleTagAll, 
 } from "../utils/chatTools.js";
-import { ollamaGenerate } from "../services/ollama.js";
+import ollamaService from "../services/ollamaService.js";
 import { whisperTranscription } from "../services/whisper.js";
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
@@ -72,9 +72,19 @@ class MessageController {
         throw new Error(EMPTY_PROMPT_ERROR);
       }
 
-      const userPhone = message.author || message.from.split('@')[0];
-      console.log(`[${new Date().toLocaleString()}] Gerando resposta para o prompt: ${prompt}`);
-      const response = await generateResponse(prompt, userPhone);
+      let response;
+      if (keyword === "porrinha") {
+        // Use chat completion for Ollama
+        const messages = [{
+          role: 'user',
+          content: prompt
+        }];
+        response = await ollamaService.generateChatCompletion(messages);
+      } else {
+        // Use default handler for other AI services
+        const userPhone = message.author || message.from.split('@')[0];
+        response = await generateResponse(prompt, userPhone);
+      }
 
       console.log(`[${new Date().toLocaleString()}] Usuário ${senderName} solicitou uma resposta para o prompt: ${prompt} e recebeu a resposta: ${response}`);
       await message.reply(response);
@@ -289,7 +299,7 @@ class MessageController {
       await MessageController.handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
     } else if (lowerCaseBody.includes("porrinha")) {
       console.log("Processando comando 'porrinha'");
-      await MessageController.handleGenerativeAI(message, senderName, "porrinha", ollamaGenerate);
+      await MessageController.handleGenerativeAI(message, senderName, "porrinha");
     } else if (message.body.startsWith("!")) {
       console.log("Processando comando com '!'");
       const [command, ...args] = message.body.toLowerCase().slice(1).split(" ");
