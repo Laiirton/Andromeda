@@ -74,8 +74,14 @@ class MessageController {
 
       let response;
       if (keyword === "porrinha") {
-        response = await ollamaService.generateCompletion(prompt);
+        // Use chat completion for Ollama
+        const messages = [{
+          role: 'user',
+          content: prompt
+        }];
+        response = await ollamaService.generateChatCompletion(messages);
       } else {
+        // Use default handler for other AI services
         const userPhone = message.author || message.from.split('@')[0];
         response = await generateResponse(prompt, userPhone);
       }
