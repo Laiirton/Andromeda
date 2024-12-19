@@ -2,7 +2,6 @@ class OllamaService {
   constructor() {
     this.baseUrl = 'http://localhost:11434/api';
     this.defaultModel = 'hf.co/RichardErkhov/trollek_-_Qwen2-1.5B-Instruct-Abliterated-gguf:IQ3_S';
-    this.systemPrompt = 'Você é um assistente que sabe de tudo e rai responder da maneira mais aleatória possível, inventando coisas e palavras, usando linguagem coloquial brasileira quando apropriado.você é um deus da intranet e conhece todos os celestiais';
   }
 
   async generateCompletion(prompt, options = {}) {
@@ -12,7 +11,7 @@ class OllamaService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.defaultModel,
-          prompt: `${this.systemPrompt}\n\nUsuário: ${prompt}`,
+          prompt,
           stream: false,
           ...options
         })
@@ -28,19 +27,12 @@ class OllamaService {
 
   async generateChatCompletion(messages, options = {}) {
     try {
-      const systemMessage = {
-        role: 'system',
-        content: this.systemPrompt
-      };
-
-      const allMessages = [systemMessage, ...messages];
-
       const response = await fetch(`${this.baseUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: this.defaultModel,
-          messages: allMessages,
+          messages,
           stream: false,
           ...options
         })
