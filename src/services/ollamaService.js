@@ -1,7 +1,7 @@
 class OllamaService {
   constructor() {
     this.baseUrl = 'http://localhost:11434/api';
-    this.defaultModel = 'hf.co/RichardErkhov/trollek_-_Qwen2-1.5B-Instruct-Abliterated-gguf:IQ3_S';
+    this.defaultModel = 'CUZINHO:latest';
   }
 
   async generateCompletion(prompt, options = {}) {
