@@ -22,52 +22,52 @@ export function initializeMessageScheduler(client) {
     }
   }
 
-  /**
-   * Schedules messages to be sent at specific times.
-   */
-  function scheduleMessages() {
-    // 08:00
-    cron.schedule("0 8 * * 1-5", () => {
-      sendMessageToGroup(
-        "Bom dia! Lembrete: Não se esqueça de bater o ponto de entrada. 💀"
-      );
-    });
+  // /**
+  //  * Schedules messages to be sent at specific times.
+  //  */
+  // function scheduleMessages() {
+  //   // 08:00
+  //   cron.schedule("0 8 * * 1-5", () => {
+  //     sendMessageToGroup(
+  //       "Bom dia! Lembrete: Não se esqueça de bater o ponto de entrada. 💀"
+  //     );
+  //   });
 
-    // 12:00
-    cron.schedule("0 12 * * 1-5", () => {
-      sendMessageToGroup("Hora do almoço! Lembre-se de bater o ponto. 😋");
-    });
+  //   // 12:00
+  //   cron.schedule("0 12 * * 1-5", () => {
+  //     sendMessageToGroup("Hora do almoço! Lembre-se de bater o ponto. 😋");
+  //   });
 
-    // 13:00
-    cron.schedule("0 13 * * 1-5", () => {
-      sendMessageToGroup(
-        "Boa tarde! Não se esqueça de bater o ponto de retorno. 👾"
-      );
-    });
+  //   // 13:00
+  //   cron.schedule("0 13 * * 1-5", () => {
+  //     sendMessageToGroup(
+  //       "Boa tarde! Não se esqueça de bater o ponto de retorno. 👾"
+  //     );
+  //   });
 
-    // 14:00
-    cron.schedule("0 14 * * 1-5", () => {
-      sendMessageToGroup(
-        "Bata o pontooooooo 🥺"
-      );
-    });
+  //   // 14:00
+  //   cron.schedule("0 14 * * 1-5", () => {
+  //     sendMessageToGroup(
+  //       "Bata o pontooooooo 🥺"
+  //     );
+  //   });
 
-    // 17:00
-    cron.schedule("0 17 * * 1-5", () => {
-      sendMessageToGroup(
-        "Atenção: Falta uma hora para o fim do expediente. Prepare-se para bater o ponto de saída em breve. 🤟"
-      );
-    });
+  //   // 17:00
+  //   cron.schedule("0 17 * * 1-5", () => {
+  //     sendMessageToGroup(
+  //       "Atenção: Falta uma hora para o fim do expediente. Prepare-se para bater o ponto de saída em breve. 🤟"
+  //     );
+  //   });
 
-    // 18:00
-    cron.schedule("0 18 * * 1-5", () => {
-      sendMessageToGroup(
-        "Fim do expediente! Não se esqueça de bater o ponto de saída. Bom descanso! 😈"
-      );
-    });
-  }
+  //   // 18:00
+  //   cron.schedule("0 18 * * 1-5", () => {
+  //     sendMessageToGroup(
+  //       "Fim do expediente! Não se esqueça de bater o ponto de saída. Bom descanso! 😈"
+  //     );
+  //   });
+  // }
 
-  return {
-    start: scheduleMessages,
-  };
+  // return {
+  //   start: scheduleMessages,
+  // };
 }
