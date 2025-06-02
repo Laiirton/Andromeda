@@ -71,6 +71,41 @@ async function cleanupFiles(...files) {
   }
 }
 
+// Função para obter a duração do vídeo
+async function getVideoDuration(filePath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(metadata.format.duration);
+    });
+  });
+}
+
+// Função para redimensionar o vídeo se for muito longo
+async function resizeVideo(inputPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .outputOptions([
+        "-vcodec", "libwebp",
+        "-vf", "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15,format=rgba,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
+        "-loop", "0",
+        "-preset", "default",
+        "-an",
+        "-vsync", "0",
+        "-t", `${MAX_VIDEO_DURATION}`,
+        "-fs", "999K",
+        "-pix_fmt", "yuva420p"
+      ])
+      .toFormat("webp")
+      .save(outputPath)
+      .on("end", resolve)
+      .on("error", reject);
+  });
+}
+
 export async function sendSticker(client, message, senderName) {
   let tempInputPath, tempOutputPath;
   try {
@@ -101,31 +136,41 @@ export async function sendSticker(client, message, senderName) {
     await writeFileAsync(tempInputPath, Buffer.from(media.data, 'base64'));
 
     if (isAnimated) {
-      await new Promise((resolve, reject) => {
-        ffmpeg(tempInputPath)
-          .addOutputOptions([
-            "-vcodec", "libwebp",
-            "-vf", "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15",
-            "-lossless", "1",
-            "-loop", "0",
-            "-preset", "default",
-            "-an",
-            "-vsync", "0",
-            "-ss", "00:00:00.0",
-            "-t", "00:00:10.0",
-            "-fs", "999K"
-          ])
-          .toFormat("webp")
-          .on('error', (err) => {
-            console.error('FFmpeg error:', err);
-            reject(err);
-          })
-          .on('end', () => {
-            console.log('FFmpeg process completed');
-            resolve();
-          })
-          .save(tempOutputPath);
-      });
+      // Obter a duração do vídeo
+      const duration = await getVideoDuration(tempInputPath);
+      console.log(`Duração do vídeo: ${duration} segundos`);
+
+      // Se o vídeo for muito longo, redimensioná-lo
+      if (duration > MAX_VIDEO_DURATION) {
+        console.log("Vídeo muito longo, redimensionando...");
+        await resizeVideo(tempInputPath, tempOutputPath);
+      } else {
+        await new Promise((resolve, reject) => {
+          ffmpeg(tempInputPath)
+            .addOutputOptions([
+              "-vcodec", "libwebp",
+              "-vf", "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15,format=rgba,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
+              "-loop", "0",
+              "-preset", "default",
+              "-an",
+              "-vsync", "0",
+              "-ss", "00:00:00.0",
+              "-t", "00:00:10.0",
+              "-fs", "999K",
+              "-pix_fmt", "yuva420p"
+            ])
+            .toFormat("webp")
+            .on('error', (err) => {
+              console.error('FFmpeg error:', err);
+              reject(err);
+            })
+            .on('end', () => {
+              console.log('FFmpeg process completed');
+              resolve();
+            })
+            .save(tempOutputPath);
+        });
+      }
     } else {
       await new Promise((resolve, reject) => {
         ffmpeg(tempInputPath)
