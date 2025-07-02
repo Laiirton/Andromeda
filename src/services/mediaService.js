@@ -204,6 +204,7 @@ export async function sendSticker(client, message, senderName) {
     console.log(`Sticker ${isAnimated ? 'animado' : 'estático'} enviado para ${senderName}`);
   } catch (error) {
     console.error("Erro ao processar sticker:", error);
+    await message.reply("Ocorreu um erro ao criar o sticker. Por favor, tente novamente.");
   } finally {
     // Clean up temp files
     await cleanupFiles(tempInputPath, tempOutputPath);

@@ -151,6 +151,7 @@ class MessageController {
         console.log(`Comando ${command} executado com sucesso`);
       } catch (error) {
         console.error(`Erro ao executar o comando ${command}:`, error);
+        await message.reply(`Ocorreu um erro ao executar o comando ${command}. Por favor, tente novamente mais tarde.`);
       }
     } else {
       console.log(`Nenhum handler encontrado para o comando: ${command}`);
@@ -195,6 +196,7 @@ class MessageController {
       await sendNSFWImage(client, message, senderName, category);
     } catch (error) {
       console.error(`Erro ao processar comando NSFW ${category}:`, error);
+      await message.reply("Ocorreu um erro ao processar o comando. Por favor, tente novamente mais tarde.");
     }
   }
 
@@ -298,6 +300,7 @@ class MessageController {
         await MessageController.handleCommand(client, message, command, args);
       } catch (error) {
         console.error(`Erro ao processar comando ${command}:`, error);
+        await message.reply("Ocorreu um erro ao processar o comando. Por favor, tente novamente mais tarde.");
       }
     } else {
       console.log("Nenhum comando reconhecido");
