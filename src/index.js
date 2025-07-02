@@ -10,9 +10,11 @@ function initWhatsappClient() {
     authStrategy: new LocalAuth(),
     puppeteer: {
       headless: true,
-      // executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
+       executablePath: "/usr/bin/google-chrome-stable",
       args: [
         '--window-position=-1000,-1000',
+        '--disable-setuid-sandbox',
+        '--no-sandbox',
       ]
     },
   });
