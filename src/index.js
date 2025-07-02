@@ -12,7 +12,9 @@ function initWhatsappClient() {
       headless: true,
       // executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
       args: [
-        '--window-position=-1000,-1000'
+        '--window-position=-1000,-1000',
+        '--no-zygote',
+        '--disable-setuid-sandbox'
       ]
     },
   });
