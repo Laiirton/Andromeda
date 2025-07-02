@@ -1,8 +1,6 @@
 // Importa módulos necessários
 import pkg from "whatsapp-web.js";
 const { MessageMedia } = pkg;
-import { createSticker } from "sticker-maker-wa";
-import ffmpegPath from "ffmpeg-static";
 import fs from "fs";
 import club from "club-atticus";
 import r34API from "0000000r34api";
@@ -10,8 +8,7 @@ import HMfull from "hmfull";
 import dotenv from "dotenv";
 import { promisify } from "util";
 import axios from 'axios';
-import ffmpeg from 'fluent-ffmpeg';  // Add this import if not already present
-import path from 'path';
+import ffmpeg from 'fluent-ffmpeg';  
 
 dotenv.config();
 const nsfw = new club();
