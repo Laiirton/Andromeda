@@ -255,8 +255,6 @@ class MessageController {
     const chat = await message.getChat();
     const phoneNumber = message.author || message.from.split('@')[0];
 
-    console.log(`Processando mensagem: "${message.body}" de ${senderName} (${phoneNumber})`);
-
     messageLog(message, senderName);
 
     if (chat.isGroup) {
@@ -272,7 +270,6 @@ class MessageController {
     }
 
     const lowerCaseBody = message.body.toLowerCase();
-    console.log(`Mensagem em minúsculas: "${lowerCaseBody}"`);
 
     // Verificar se é uma resposta a uma sugestão
     if (pendingSuggestions.has(senderName.toLowerCase())) {
