@@ -17,7 +17,6 @@ async function handleGardenStock(message, category) {
     }).join('\n\n');
     await message.reply(text);
   } catch (e) {
-    await message.reply('Erro ao buscar estoque.');
   }
 }
 import fetch from 'node-fetch';
