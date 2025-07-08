@@ -9,8 +9,10 @@ import HMfull from "hmfull";
 import dotenv from "dotenv";
 import { promisify } from "util";
 import axios from 'axios';
-import ffmpeg from 'fluent-ffmpeg';  
+import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
+
+ffmpeg.setFfmpegPath("D:/Path/Ffmpeg/bin/ffmpeg.exe");
 
 dotenv.config();
 const nsfw = new club();

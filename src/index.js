@@ -10,7 +10,7 @@ function initWhatsappClient() {
     authStrategy: new LocalAuth(),
     puppeteer: {
       headless: true,
-       executablePath: "/usr/bin/google-chrome-stable",
+      //  executablePath: "/usr/bin/google-chrome-stable",
       args: [
         '--window-position=-1000,-1000',
         '--disable-setuid-sandbox',
