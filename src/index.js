@@ -39,7 +39,6 @@ client.on("message", async (message) => {
     await processMessage(client, message);
 
   } catch (error) {
-    console.error(`Error processing message: ${error}`);
   }
 });
 
