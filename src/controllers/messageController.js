@@ -160,13 +160,7 @@ class MessageController {
 
     const handler = commandHandlers[command];
     if (handler) {
-      console.log(`Handler encontrado para o comando: ${command}`);
-      try {
-        await handler();
-        console.log(`Comando ${command} executado com sucesso`);
-      } catch (error) {
-        console.error(`Erro ao executar o comando ${command}:`, error);
-      }
+      await handler();
     } else {
       console.log(`Nenhum handler encontrado para o comando: ${command}`);
       // Encontrar o comando mais próximo
@@ -299,23 +293,12 @@ class MessageController {
     }
 
     if (lowerCaseBody.includes("coiso")) {
-      console.log("Processando comando 'coiso'");
       await MessageController.handleGenerativeAI(message, senderName, "coiso", getGeminiResponse);
     } else if (lowerCaseBody.includes("porrinha")) {
-      console.log("Processando comando 'porrinha'");
       await MessageController.handleGenerativeAI(message, senderName, "porrinha");
     } else if (message.body.startsWith("!")) {
-      console.log("Processando comando com '!'");
       const [command, ...args] = message.body.toLowerCase().slice(1).split(" ");
-      console.log(`Comando detectado: ${command}, Argumentos: ${args.join(', ')}`);
-      console.log('Argumentos completos:', args); // Novo log
-      try {
-        await MessageController.handleCommand(client, message, command, args);
-      } catch (error) {
-        console.error(`Erro ao processar comando ${command}:`, error);
-      }
-    } else {
-      console.log("Nenhum comando reconhecido");
+      await MessageController.handleCommand(client, message, command, args);
     }
   }
 
