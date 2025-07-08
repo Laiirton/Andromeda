@@ -83,7 +83,7 @@ async function handleGardenStock(message, category) {
     } else {
       text = stock.map(item => {
         let str = `${item.name} (x${item.value})`;
-        if (category !== 'seedsStock' && item.image) str += `\n${item.image}`;
+        if (category !== 'seedsStock' && category !== 'eggStock' && item.image) str += `\n${item.image}`;
         return str;
       }).join('\n\n');
     }
