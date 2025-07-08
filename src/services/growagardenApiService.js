@@ -57,12 +57,36 @@ async function handleGardenStock(message, category) {
       await message.reply('Nenhum item encontrado para esta categoria.');
       return;
     }
-    let text = stock.map(item => {
-      let str = `${item.name} (x${item.value})`;
-      if (category !== 'seedsStock' && item.image) str += `\n${item.image}`;
-      return str;
-    }).join('\n\n');
-
+    let text;
+    if (category === 'seedsStock') {
+      let db;
+      let itemsArr = [];
+      try {
+        const fs = await import('fs/promises');
+        const path = new URL('../../storage/Database.json', import.meta.url);
+        const jsonStr = await fs.readFile(path, 'utf-8');
+        db = JSON.parse(jsonStr);
+        itemsArr = Array.isArray(db.items) ? db.items : [];
+        console.log('Database.json carregado:', !!db, itemsArr.length);
+      } catch (err) {
+        console.log('Erro ao ler Database.json:', err);
+      }
+      text = stock.map(item => {
+        let type = '';
+        let found = itemsArr.find(i => i.name.trim().toLowerCase() === item.name.trim().toLowerCase());
+        if (found && found.rarity) type = found.rarity;
+        console.log('Seed:', item.name, '| Encontrado:', !!found, '| Raridade:', type);
+        let str = `${item.name} (x${item.value})`;
+        if (type) str += `  ${type}`;
+        return str;
+      }).join('\n\n');
+    } else {
+      text = stock.map(item => {
+        let str = `${item.name} (x${item.value})`;
+        if (category !== 'seedsStock' && item.image) str += `\n${item.image}`;
+        return str;
+      }).join('\n\n');
+    }
     await message.reply(text);
   } catch (e) {
   }
