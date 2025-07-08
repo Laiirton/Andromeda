@@ -147,7 +147,7 @@ class MessageController {
       garden: () => gardenStockService.handleGardenStock(message, 'all'),
       seeds: () => gardenStockService.handleGardenStock(message, 'seedsStock'),
       gear: () => gardenStockService.handleGardenStock(message, 'gearStock'),
-      egg: () => gardenStockService.handleGardenStock(message, 'eggStock'),
+      eggs: () => gardenStockService.handleGardenStock(message, 'eggStock'),
       honey: () => gardenStockService.handleGardenStock(message, 'honeyStock'),
       cosmetics: () => gardenStockService.handleGardenStock(message, 'cosmeticsStock'),
       night: () => gardenStockService.handleGardenStock(message, 'nightStock'),
