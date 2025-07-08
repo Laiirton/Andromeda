@@ -144,16 +144,16 @@ class MessageController {
       updaterarity: () => PokemonController.handleUpdatePokemonRarities(message, senderName),
       tagall: () => handleTagAll(client, message, senderName),
 
-      gardenstock: () => gardenStockService.handleGardenStock(message, 'all'),
-      seedsstock: () => gardenStockService.handleGardenStock(message, 'seedsStock'),
-      gearstock: () => gardenStockService.handleGardenStock(message, 'gearStock'),
-      eggstock: () => gardenStockService.handleGardenStock(message, 'eggStock'),
-      honeystock: () => gardenStockService.handleGardenStock(message, 'honeyStock'),
-      cosmeticsstock: () => gardenStockService.handleGardenStock(message, 'cosmeticsStock'),
-      nightstock: () => gardenStockService.handleGardenStock(message, 'nightStock'),
-      easterstock: () => gardenStockService.handleGardenStock(message, 'easterStock'),
-      restocktimers: () => MessageController.handleRestockTimers(message),
-      lastseen: () => MessageController.handleLastSeen(message)
+      garden: () => gardenStockService.handleGardenStock(message, 'all'),
+      seeds: () => gardenStockService.handleGardenStock(message, 'seedsStock'),
+      gear: () => gardenStockService.handleGardenStock(message, 'gearStock'),
+      egg: () => gardenStockService.handleGardenStock(message, 'eggStock'),
+      honey: () => gardenStockService.handleGardenStock(message, 'honeyStock'),
+      cosmetics: () => gardenStockService.handleGardenStock(message, 'cosmeticsStock'),
+      night: () => gardenStockService.handleGardenStock(message, 'nightStock'),
+      easter: () => gardenStockService.handleGardenStock(message, 'easterStock'),
+      restocktimers: () => gardenStockService.handleRestockTimers(message),
+      lastseen: () => gardenStockService.handleLastSeen(message)
 
 
     };
