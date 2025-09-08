@@ -200,7 +200,7 @@ export async function sendSticker(client, message, senderName) {
     await client.sendMessage(message.from, stickerMedia, {
       sendMediaAsSticker: true,
       stickerAuthor: `Created by ${senderName}`,
-      stickerName: "Anjinho Bot"
+      stickerName: "Ruindade Pura"
     });
 
     console.log(`Sticker ${isAnimated ? 'animado' : 'estático'} enviado para ${senderName}`);
