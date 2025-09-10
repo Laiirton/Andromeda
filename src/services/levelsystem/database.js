@@ -44,7 +44,7 @@ export async function isLevelSystemActive(groupId) {
 
     return data.level_system_active;
   } catch (error) {
-    console.error('Erro ao verificar status do sistema de níveis:', error);
+    // Retorna false silenciosamente em caso de erro de conexão
     return false;
   }
 }
