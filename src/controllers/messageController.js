@@ -265,14 +265,18 @@ class MessageController {
     messageLog(message, senderName);
 
     if (chat.isGroup) {
-      const isActive = await isLevelSystemActive(chat.id._serialized);
-      if (isActive) {
-        console.log(`Processando mensagem para sistema de níveis: ${senderName} (${phoneNumber}) no grupo ${chat.name}`);
-        const levelUp = await processLevelMessage(phoneNumber, chat.id._serialized, senderName);
-        if (levelUp) {
-          await message.reply(`🎉 Parabéns, ${senderName}! Você subiu para o nível ${levelUp}! 🎉`);
-          console.log(`${senderName} subiu para o nível ${levelUp} no grupo ${chat.name}`);
+      try {
+        const isActive = await isLevelSystemActive(chat.id._serialized);
+        if (isActive) {
+          console.log(`Processando mensagem para sistema de níveis: ${senderName} (${phoneNumber}) no grupo ${chat.name}`);
+          const levelUp = await processLevelMessage(phoneNumber, chat.id._serialized, senderName);
+          if (levelUp) {
+            await message.reply(`🎉 Parabéns, ${senderName}! Você subiu para o nível ${levelUp}! 🎉`);
+            console.log(`${senderName} subiu para o nível ${levelUp} no grupo ${chat.name}`);
+          }
         }
+      } catch (error) {
+        // Sistema de níveis com erro de conexão, funcionalidade continua sem afetar outras funções
       }
     }
 
